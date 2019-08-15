@@ -10,4 +10,3 @@ import yaml
 class SharePoint:
     def load_data(config):
         pass
-
