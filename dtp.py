@@ -6,6 +6,7 @@ import re
 import yaml
 import pydap
 import pandas as pd
+import copy
 from erddapy import ERDDAP
 
 from yamlinclude import YamlIncludeConstructor
@@ -72,9 +73,11 @@ def load_driver(config):
 # loads data from data source via 'driver'
 def load_data_source(config, driver):
     data = {}
+    print('Loading baseline station data from ERDDAP...')
     data['erddap'] = load_data_from_erddap(config)
 
     for index_label, station_profile in enumerate(data['erddap']):
+        print('Loading Individual Profile: %s' % (station_profile))
         data['erddap'][station_profile] = load_data_from_erddap(config, station_profile, data['erddap'][station_profile])
         
     
@@ -104,7 +107,7 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
         for index_label, row_series in stations_df.iterrows():
             id = row_series['datasetID']
             
-            stations[id] = mcf_template
+            stations[id] = copy.deepcopy(mcf_template)
             dataset_url = row_series['tabledap'] if row_series['dataStructure'] == 'table' else row_series['griddap']
 
             stations[id]['metadata']['identifier'] = id
@@ -145,7 +148,7 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
         # a pivot should made to gather variable attributes into a table, indexed on column name
         columns = metadata[(metadata['Row Type']=='variable')]['Variable Name'].values
 
-        station_data['identification']['keywords']['default']['keywords'] = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']=='keywords')]['Value'].values[0]
+        station_data['identification']['keywords']['default']['keywords'] = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']=='keywords')]['Value'].values
 
         return_value = station_data
 

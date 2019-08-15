@@ -23,8 +23,10 @@ spatial:
 identification:
     language: eng; CAN
     charset: utf8
+    title: 
     #title_en: 
     #title_fr: 
+    abstract: 
     #abstract_en: 
     #abstract_fr: 
     dates:
@@ -41,7 +43,7 @@ identification:
     accessconstraints: otherRestrictions
     rights: Copyright (c) $year$ Centre for Applied Ocean Technology (CTec), School of Ocean Technology, Fisheries and Marine Institute of Memorial University
     #rights_en: 
-    #rights_fr: 
+    rights_fr: Copyright (c) $year$ Centre for Applied Ocean Technology (CTec), School of Ocean Technology, Fisheries and Marine Institute of Memorial University (in French)
     url: 
     temporal_begin: 
     temporal_end: 
