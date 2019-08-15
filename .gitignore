@@ -1,0 +1,13 @@
+
+*.pyc
+sa_platforms/*.xml
+schemas/iso19139-hnap/charstring.j2
+schemas/iso19139-hnap/contact.j2
+schemas/iso19139-hnap/main.j2
+schemas/iso19139/contact.j2
+schemas/iso19139/main.j2
+schemas/wmo-cmp/contact.j2
+schemas/wmo-cmp/main.j2
+schemas/wmo-wigos/contact.j2
+schemas/wmo-wigos/main.j2
+schemas/common/iso19139-charstring.j2

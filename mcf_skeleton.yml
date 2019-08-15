@@ -1,0 +1,61 @@
+# MCF Reference File
+# https://github.com/geopython/pygeometa/blob/master/doc/MCF_Reference.md
+
+mcf:
+    version: 1.0
+
+metadata:
+    identifier: 
+    language: en
+    #language_alternate: 
+    charset: utf8
+    #parentidentifier: 
+    hierarchylevel: dataset
+    datestamp: $datetime$
+    dataseturi: 
+
+spatial:
+    datatype: 
+    geomtype: 
+    crs: 4326
+    bbox: 
+
+identification:
+    language: eng; CAN
+    charset: utf8
+    #title_en: 
+    #title_fr: 
+    #abstract_en: 
+    #abstract_fr: 
+    dates:
+        creation: 
+    #    publication: 
+    keywords:
+        default:
+            keywords:
+    #        keywords_en: 
+    #        keywords_fr: 
+    topiccategory:
+        - climatologyMeteorologyAtmosphere
+    fees: None
+    accessconstraints: otherRestrictions
+    rights: Copyright (c) $year$ Centre for Applied Ocean Technology (CTec), School of Ocean Technology, Fisheries and Marine Institute of Memorial University
+    #rights_en: 
+    #rights_fr: 
+    url: 
+    temporal_begin: 
+    temporal_end: 
+    status: 
+    maintenancefrequency: asNeeded
+
+contact:
+    main: !include contact_main.yml 
+    distribution: !include contact_secondary.yml
+
+distribution:
+    erddap:
+        url: 
+        type: ERDDAP:tabledap
+        name: ERDDAP download
+        description: SmartAtlantic ERDDAP Server
+        function: download
