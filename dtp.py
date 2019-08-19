@@ -18,6 +18,8 @@ import argparse
 
 logging.basicConfig(filename='dtp.log', level=logging.DEBUG)
 
+dtp_logger = logging.getLogger(__name__)
+
 # runs all the things
 def main(prog_args):
     YamlIncludeConstructor.add_to_loader_class(loader_class=yaml.FullLoader)
@@ -61,14 +63,12 @@ def read_config(prog_args):
         config.read('dtp_config.ini')
 
     return config
-    pass
 
 # load data source 'driver'
 def load_driver(config):
     # not currently being used, will draw on later to merge in SharePoint data
     driver = importlib.import_module('drivers.' + config['driver']['driver_type'])
     return driver
-    pass
 
 # loads data from data source via 'driver'
 def load_data_source(config, driver):
@@ -84,7 +84,6 @@ def load_data_source(config, driver):
     # Harvest Station data from ERDDAP metadata, fields, units, etc.  Use OpenDAP .DAS feed
     #data['maintenance'] = driver.Driver.load_data(config)
     return data
-    pass
 
 def load_data_from_erddap(config, station_id=None, station_data=None):
     mcf_template = yaml.load(open(config['static_data']['mcf_template'], 'r'), Loader=yaml.FullLoader)
@@ -98,6 +97,9 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
         #load all station data MCF skeleton
         stations = {}
         es.dataset_id = 'allDatasets'
+
+        # filter out "log in" datasets as the vast majoirty of their available metadata is unavailable
+        es.constraints = {'accessible=': 'public'}
         stations_df = es.to_pandas()
 
         # drop 'allDatasets' row
@@ -107,11 +109,14 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
         for index_label, row_series in stations_df.iterrows():
             id = row_series['datasetID']
             
+            # ensure each station has an independant copy of the MCF skeleton
             stations[id] = copy.deepcopy(mcf_template)
             dataset_url = row_series['tabledap'] if row_series['dataStructure'] == 'table' else row_series['griddap']
 
             stations[id]['metadata']['identifier'] = id
             stations[id]['metadata']['dataseturi'] = dataset_url
+            
+            stations[id]['spatial']['datatype'] = 'textTable' if row_series['dataStructure'] == 'table' else 'grid'
 
             stations[id]['spatial']['geomtype'] = row_series['cdm_data_type']
             stations[id]['spatial']['bbox'] = '%s,%s,%s,%s' % (row_series['minLongitude (degrees_east)'], row_series['minLatitude (degrees_north)'], row_series['maxLongitude (degrees_east)'], row_series['maxLatitude (degrees_north)'])
@@ -144,9 +149,25 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
         print(metadata_url)
         print(metadata.head())
 
-        # should be able to layer this in later to describe dataset variables
-        # a pivot should made to gather variable attributes into a table, indexed on column name
-        columns = metadata[(metadata['Row Type']=='variable')]['Variable Name'].values
+        # ERDDAP ISO XML provides a list of dataset field names (long & short), data types & units
+        # of measurement, in case this becomes useful for the CIOOS metadata standard we can extend 
+        # the YAML skeleton to include these and the template to export them.
+        #
+        # below most varible attributes from ERDDAP are extracted and pivoted to describe the field
+        # actual field data types are extracted seperately and merged into the pivoted dataframe 
+        # for completeness
+        columns_pivot = metadata[(metadata['Variable Name'] != 'NC_GLOBAL') & (metadata['Row Type']!='variable')].pivot(index='Variable Name', columns='Attribute Name', values='Value')
+        col_data_types = metadata[(metadata['Row Type']=='variable')][['Variable Name','Data Type']]
+        df_merge = pd.merge(columns_pivot, col_data_types, on='Variable Name')
+
+        station_data['dataset'] = {}
+        
+        for index_label, field_series in df_merge.iterrows():
+            field_name = field_series['Variable Name']
+            station_data['dataset'][field_name] = {}
+            station_data['dataset'][field_name]['long_name'] = field_series['long_name']
+            station_data['dataset'][field_name]['data_type'] = field_series['Data Type']
+            station_data['dataset'][field_name]['units'] = field_series['units']
 
         station_data['identification']['keywords']['default']['keywords'] = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']=='keywords')]['Value'].values
 
@@ -171,12 +192,20 @@ def translate_into_yaml(dtp_config, pygm_source):
 # https://github.com/geopython/pygeometa#using-the-api-from-python
 def process_info_schema(dtp_config, pygm_yaml):
     for index_label, station_profile in enumerate(pygm_yaml['erddap']):
+        dtp_logger.info('Processing YAML for %s' % (station_profile))
+
         file_name = '%s/%s.xml' % (dtp_config['output']['target_dir'], station_profile)
 
-        iso_xml = render_template(pygm_yaml['erddap'][station_profile], schema_local=dtp_config['output']['target_schema'])
+        try:
+            iso_xml = render_template(pygm_yaml['erddap'][station_profile], schema_local=dtp_config['output']['target_schema'])
 
-        with open(file_name, 'w') as file_writer:
-            file_writer.write(iso_xml)
+            with open(file_name, 'w') as file_writer:
+                file_writer.write(iso_xml)
+            
+        except Exception as ex:
+            dtp_logger.exception('PyGeoMeta render_template() failed for station: %s' % (station_profile), exc_info=ex)
+            dtp_logger.debug('Dumping Station YAML: %s' % (yaml.dump(pygm_yaml['erddap'][station_profile])))
+
 
 
 if __name__ == '__main__':

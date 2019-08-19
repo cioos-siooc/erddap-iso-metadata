@@ -8,5 +8,5 @@ import re
 import yaml
 
 class SharePoint:
-    def load_data(config):
+    def load_data(self, config):
         pass
