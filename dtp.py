@@ -191,6 +191,8 @@ def translate_into_yaml(dtp_config, pygm_source):
 # process pyYaml output into ISO metadata via pyGeometa
 # https://github.com/geopython/pygeometa#using-the-api-from-python
 def process_info_schema(dtp_config, pygm_yaml):
+    output = []
+
     for index_label, station_profile in enumerate(pygm_yaml['erddap']):
         dtp_logger.info('Processing YAML for %s' % (station_profile))
 
@@ -198,14 +200,15 @@ def process_info_schema(dtp_config, pygm_yaml):
 
         try:
             iso_xml = render_template(pygm_yaml['erddap'][station_profile], schema_local=dtp_config['output']['target_schema'])
-
+            output.append(iso_xml)
             with open(file_name, 'w') as file_writer:
                 file_writer.write(iso_xml)
             
         except Exception as ex:
             dtp_logger.exception('PyGeoMeta render_template() failed for station: %s' % (station_profile), exc_info=ex)
             dtp_logger.debug('Dumping Station YAML: %s' % (yaml.dump(pygm_yaml['erddap'][station_profile])))
-
+            
+    return output
 
 
 if __name__ == '__main__':
