@@ -1,22 +1,104 @@
 <?xml version="1.0" encoding="UTF-8"?>
 {% import 'charstring.j2' as cs %}
-<mdb:MD_Metadata xmlns:mdb="http://standards.iso.org/iso/19115/-3/mdb/1.0" xmlns="http://standards.iso.org/iso/19115/-3/mdb/1.0" xmlns:cit="http://standards.iso.org/iso/19115/-3/cit/1.0" xmlns:dqc="http://standards.iso.org/iso/19157/-2/dqc/1.0" xmlns:gco="http://standards.iso.org/iso/19115/-3/gco/1.0" xmlns:gex="http://standards.iso.org/iso/19115/-3/gex/1.0" xmlns:lan="http://standards.iso.org/iso/19115/-3/lan/1.0" xmlns:mcc="http://standards.iso.org/iso/19115/-3/mcc/1.0" xmlns:mri="http://standards.iso.org/iso/19115/-3/mri/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://standards.iso.org/iso/19115/-3/mdb/1.0 mdb.xsd">
+<mdb:MD_Metadata 
+    xmlns:mdb="https://standards.iso.org/iso/19115/-3/mdb/1.0" 
+    xmlns="https://standards.iso.org/iso/19115/-3/mdb/1.0" 
+    xmlns:cit="https://standards.iso.org/iso/19115/-3/cit/1.0" 
+    xmlns:dqc="https://standards.iso.org/iso/19157/-2/dqc/1.0" 
+    xmlns:gco="https://standards.iso.org/iso/19115/-3/gco/1.0" 
+    xmlns:gex="https://standards.iso.org/iso/19115/-3/gex/1.0" 
+    xmlns:lan="https://standards.iso.org/iso/19115/-3/lan/1.0" 
+    xmlns:mcc="https://standards.iso.org/iso/19115/-3/mcc/1.0" 
+    xmlns:mri="https://standards.iso.org/iso/19115/-3/mri/1.0" 
+    xmlns:xsi="https://www.w3.org/2001/XMLSchema-instance" 
+    xsi:schemaLocation="https://standards.iso.org/iso/19115/-3/mdb/1.0/mdb.xsd">
   <mdb:contact>
   {% set contact = record['contact']['main'] %}
   {% set role = 'pointOfContact; contact' %}
-  {% set role_codelist_value = 'RI_414' %}
+  {% set role_codelist_value = 'CI_RoleCode_pointOfContact' %}
   {% include "contact.j2" %}
   </mdb:contact>
   <mdb:dateInfo>
     <cit:CI_Date>
       <cit:date>
-        <gco:DateTime>2004-03-12T12:00:00</gco:DateTime>
+        {% set datestamp = record['metadata']['datestamp']|normalize_datestring %}
+        {% if datestamp|length > 11 %}
+        <gco:DateTime>{{ datestamp }}</gco:DateTime>
+        {% else %}
+        <gco:Date>{{ datestamp }}</gco:Date>
+        {% endif %}        
       </cit:date>
       <cit:dateType>
-        <cit:CI_DateTypeCode codeList="http://standards.iso.org/iso/19115/resources/Codelist/cat/codeLists.xml#creation" codeListValue="Creation" />
+        <cit:CI_DateTypeCode codeList="https://standards.iso.org/iso/19115/resources/Codelist/cat/codeLists.xml#creation" codeListValue="Creation" />
       </cit:dateType>
     </cit:CI_Date>
   </mdb:dateInfo>
+  <mdb:metadataStandard>
+    <cit:CI_Citation>
+      <cit:title>
+        <gco:CharacterString></gco:CharacterString>
+      </cit:title>
+      <cit:edition>
+        <gco:CharacterString></gco:CharacterString>
+      </cit:edition>
+    </cit:CI_Citation>
+  </mdb:metadataStandard>
+  {% if record['metadata']['parentidentifier'] %}
+  <mdb:parentMetadata>
+    <cit:CI_Citation>
+      <cit:identifier>
+        <mdb:MD_Identifier>
+          <mdb:code>
+            <gco:CharacterString>{{ record['metadata']['parentidentifier'] }}</gco:CharacterString>
+          </mdb:code>
+        </mdb:MD_Identifier>
+      </cit:identifier>
+    </cit:CI_Citation>
+  </mdb:parentMetadata>
+  {% endif %}
+  <mdb:defaultLocale>
+    <lan:PT_Locale>
+      <gmd:country>
+        ?? CountryCodeList ??
+      </gmd:country>
+      <lan:language>
+        ?? LanguageCodeList ??
+      </lan:language>
+      <lan:characterEncoding>
+        <lan:MD_CharacterSetCode codeList="https://standards.iso.org/iso/19115/resources/Codelist/lan/CharacterSetCode.xml" codeListValue="utf8">UTF-8</lan:MD_CharacterSetCode>
+      </lan:characterEncoding>
+    </lan:PT_Locale>
+  </mdb:defaultLocale>
+  <mdb:metdataScope>
+    <mdb:resourceScope>
+      <mcc:MD_MetadataScope>
+        <gco:CharacterString></gco:CharacterString>
+      </mcc:MD_MetadataScope>
+    </mdb:resourceScope>
+    <mdb:name>
+      <gco:CharacterString></gco:CharacterString>
+    </mdb:name>
+  </mdb:metdataScope>
+  <mdb:metadataIdentifier>
+    <mdb:MD_Identifier>
+      <mdb:code>
+        <gco:CharacterString></gco:CharacterString>
+      </mdb:code>
+      <mdb:description>
+        <gco:CharacterString></gco:CharacterString>
+      </mdb:description>
+      <mdb:authority>
+        <cit:CI_Citation>
+          <cit:citedResponsibleParty>
+            {% set contact = record['contact']['main'] %}
+            {% set role = 'pointOfContact; contact' %}
+            {% set role_codelist_value = 'CI_RoleCode_pointOfContact' %}
+            {% include "contact.j2" %}
+          </cit:citedResponsibleParty>
+        </cit:CI_Citation>
+      </mdb:authority>
+    </mdb:MD_Identifier>
+  </mdb:metadataIdentifier>
   <mdb:identificationInfo>
     <mri:MD_DataIdentification>
       <mri:citation>
@@ -31,7 +113,7 @@
                 <gco:DateTime>1993-01-01T12:00:00</gco:DateTime>
               </cit:date>
               <cit:dateType>
-                <cit:CI_DateTypeCode codeList="http://standards.iso.org/iso/19115/resources/Codelist/cat/codeLists.xml#CI_DateTypeCode" codeListValue="publication">publication</cit:CI_DateTypeCode>
+                <cit:CI_DateTypeCode codeList="https://standards.iso.org/iso/19115/resources/Codelist/cat/codeLists.xml#CI_DateTypeCode" codeListValue="publication">publication</cit:CI_DateTypeCode>
               </cit:dateType>
             </cit:CI_Date>
           </cit:date>
@@ -75,10 +157,10 @@
       <mri:defaultLocale>
         <lan:PT_Locale>
           <lan:language>
-            <lan:LanguageCode codeList="http://standards.iso. org/iso/19115/resources/Codelist/lan/LanguageCode.xml" codeListValue="eng">English</lan:LanguageCode>
+            <lan:LanguageCode codeList="https://standards.iso.org/iso/19115/resources/Codelist/lan/LanguageCode.xml" codeListValue="eng">English</lan:LanguageCode>
           </lan:language>
           <lan:characterEncoding>
-            <lan:MD_CharacterSetCode codeList="http://standards.iso. org/iso/19115/resources/Codelist/lan/CharacterSetCode.xml" codeListValue="utf8">UTF-8</lan:MD_CharacterSetCode>
+            <lan:MD_CharacterSetCode codeList="https://standards.iso.org/iso/19115/resources/Codelist/lan/CharacterSetCode.xml" codeListValue="utf8">UTF-8</lan:MD_CharacterSetCode>
           </lan:characterEncoding>
         </lan:PT_Locale>
       </mri:defaultLocale>
