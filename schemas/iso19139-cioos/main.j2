@@ -10,6 +10,7 @@
     xmlns:lan="https://standards.iso.org/iso/19115/-3/lan/1.0" 
     xmlns:mcc="https://standards.iso.org/iso/19115/-3/mcc/1.0" 
     xmlns:mri="https://standards.iso.org/iso/19115/-3/mri/1.0" 
+    xmlns:mrl="https://standards.iso.org/iso/19115/-3/mrl/1.0" 
     xmlns:xsi="https://www.w3.org/2001/XMLSchema-instance" 
     xsi:schemaLocation="https://standards.iso.org/iso/19115/-3/mdb/1.0/mdb.xsd">
   <mdb:contact>
@@ -29,7 +30,7 @@
         {% endif %}        
       </cit:date>
       <cit:dateType>
-        <cit:CI_DateTypeCode codeList="https://standards.iso.org/iso/19115/resources/Codelist/cat/codeLists.xml#creation" codeListValue="Creation" />
+        <cit:CI_DateTypeCode codeList="https://standards.iso.org/iso/19115/resources/Codelists/cat/codeLists.xml#creation" codeListValue="Creation" />
       </cit:dateType>
     </cit:CI_Date>
   </mdb:dateInfo>
@@ -58,14 +59,16 @@
   {% endif %}
   <mdb:defaultLocale>
     <lan:PT_Locale>
-      <gmd:country>
-        ?? CountryCodeList ??
-      </gmd:country>
       <lan:language>
-        ?? LanguageCodeList ??
+        <!-- May not be correct -->
+        <gco:CharacterString>eng</gco:CharacterString>
       </lan:language>
+      <gmd:country>
+        <!-- May not be correct -->
+        <gco:CharacterString>CA</gco:CharacterString>
+      </gmd:country>
       <lan:characterEncoding>
-        <lan:MD_CharacterSetCode codeList="https://standards.iso.org/iso/19115/resources/Codelist/lan/CharacterSetCode.xml" codeListValue="utf8">UTF-8</lan:MD_CharacterSetCode>
+        <lan:MD_CharacterSetCode codeList="https://standards.iso.org/iso/19115/resources/Codelists/lan/CharacterSetCode.xml" codeListValue="utf8">UTF-8</lan:MD_CharacterSetCode>
       </lan:characterEncoding>
     </lan:PT_Locale>
   </mdb:defaultLocale>
@@ -104,7 +107,7 @@
       <mri:citation>
         <cit:CI_Citation>
           <cit:title>
-            <gco:CharacterString>Exploration Licences for Minerals</gco:CharacterString>
+            {{ cs.get_freetext('title', 'fra', get_charstring('title', record['identification'], 'en', 'fr')) }}
           </cit:title>
           <!-- mandatory (dataType= creation) by constraint enforced by Schematron rule -->
           <cit:date>
@@ -113,7 +116,7 @@
                 <gco:DateTime>1993-01-01T12:00:00</gco:DateTime>
               </cit:date>
               <cit:dateType>
-                <cit:CI_DateTypeCode codeList="https://standards.iso.org/iso/19115/resources/Codelist/cat/codeLists.xml#CI_DateTypeCode" codeListValue="publication">publication</cit:CI_DateTypeCode>
+                <cit:CI_DateTypeCode codeList="https://standards.iso.org/iso/19115/resources/Codelists/cat/codeLists.xml#CI_DateTypeCode" codeListValue="publication">publication</cit:CI_DateTypeCode>
               </cit:dateType>
             </cit:CI_Date>
           </cit:date>
@@ -157,13 +160,84 @@
       <mri:defaultLocale>
         <lan:PT_Locale>
           <lan:language>
-            <lan:LanguageCode codeList="https://standards.iso.org/iso/19115/resources/Codelist/lan/LanguageCode.xml" codeListValue="eng">English</lan:LanguageCode>
+            <lan:LanguageCode codeList="https://standards.iso.org/iso/19115/resources/Codelists/lan/LanguageCode.xml" codeListValue="eng">English</lan:LanguageCode>
           </lan:language>
           <lan:characterEncoding>
-            <lan:MD_CharacterSetCode codeList="https://standards.iso.org/iso/19115/resources/Codelist/lan/CharacterSetCode.xml" codeListValue="utf8">UTF-8</lan:MD_CharacterSetCode>
+            <lan:MD_CharacterSetCode codeList="https://standards.iso.org/iso/19115/resources/Codelists/lan/CharacterSetCode.xml" codeListValue="utf8">UTF-8</lan:MD_CharacterSetCode>
           </lan:characterEncoding>
         </lan:PT_Locale>
       </mri:defaultLocale>
     </mri:MD_DataIdentification>
   </mdb:identificationInfo>
+  <!-- unsure about how to start LI_Lineage, working from example on p62 of ISO19115-3:2016 doc -->
+  <mdb:resourceLineage>
+    <mrl:LI_Lineage>
+      <mrl:statement>
+        <gco:CharacterString></gco:CharacterString>
+      </mrl:statement>
+      <mrl:scope>
+        <!-- Or should we use https://standards.iso.org/iso/19115/resources/Codelists/gml/MD_ScopeCode.xml -->
+        <mcc:MD_ScopeCode codeList="https://standards.iso.org/iso/19115/resources/Codelists/cat/codelists.xml#MD_ScopeCode" codeListValue=""></mcc:MD_ScopeCode>
+      </mrl:scope>
+      <mrl:additionalDocumentation>
+        <cit:CI_Citation>
+          <cit:title>
+            <gco:CharacterString></gco:CharacterString>
+          </cit:title>
+          <cit:onlineResource>
+            <cit:CI_OnlineResource>
+              <cit:linkage>
+                <gco:CharacterString></gco:CharacterString>
+              </cit:linkage>
+            </cit:CI_OnlineResource>
+          </cit:onlineResource>
+        </cit:CI_Citation>
+      </mrl:additionalDocumentation>
+      <mrl:processStep>
+        <mrl:LI_ProcessStep>
+          <mrl:description>
+            <gco:CharacterString></gco:CharacterString>
+          </mrl:description>
+          <mrl:rationale>
+            <gco:CharacterString></gco:CharacterString>
+          </mrl:rationale>
+        </mrl:LI_ProcessStep>
+      </mrl:processStep>
+      <mrl:source>
+        <mrl:LI_Source>
+          <mrl:description>
+            <gco:CharacterString></gco:CharacterString>
+          </mrl:description>
+          <mrl:sourceSpatialResolution>
+            <mri:MD_Resolution>
+              <mri:equivalentScale>
+                <mri:MD_RepresentativeFraction>
+                  <mri:denominator>
+                    <gco:Integer></gco:Integer>
+                  </mri:denominator>
+                </mri:MD_RepresentativeFraction>
+              </mri:equivalentScale>
+            </mri:MD_Resolution>
+          </mrl:sourceSpatialResolution>
+          <mrl:sourceReferenceSystem>
+            <mrs:MD_ReferenceSystem>
+              <mrs:referenceSystemIdentifier>
+                <mcc:MD_Identifier>
+                  <mcc:code>
+                    <gco:CharacterString></gco:CharacterString>
+                  </mcc:code>
+                  <mcc:description>
+                    <gco:CharacterString></gco:CharacterString>
+                  </mcc:description>
+                </mcc:MD_Identifier>
+              </mrs:referenceSystemIdentifier>
+              <mrs:referenceSystemType>
+                <mrs:MD_ReferenceSystemTypeCode codeList="https://standards.iso.org/iso/19115/resources/Codelists/cat/codelists.xml#MD_ReferenceSystemTypeCode" codeListValue=""></mrs:MD_ReferenceSystemTypeCode>
+              </mrs:referenceSystemType>
+            </mrs:MD_ReferenceSystem>
+          </mrl:sourceReferenceSystem>
+        </mrl:LI_Source>
+      </mrl:source>
+    </mrl:LI_Lineage>
+  </mdb:resourceLineage>
 </mdb:MD_Metadata>
