@@ -1,0 +1,70 @@
+# in this record, french is the default language
+# if english were the default language, there would be title_fra,summary_fra, etc
+
+acknowledgement: 
+cdm_data_type: 'TimeSeries'
+comment: 
+contributor_name: ''
+contributor_role: ''
+coverage_content_type: 
+creator_email: 
+creator_name: 
+creator_url: 
+date_created: 
+date_issued: 
+date_modified: 
+geospatial_bounds:
+geospatial_lat_max: 
+geospatial_lat_min: 
+geospatial_lat_resolution:
+geospatial_lat_units: 'degrees_north'
+geospatial_lon_max: 
+geospatial_lon_min: 
+geospatial_lon_resolution:
+geospatial_lon_units: 'degrees_east'
+geospatial_vertical_max:
+geospatial_vertical_min:
+geospatial_vertical_positive:
+geospatial_vertical_resolution:
+geospatial_vertical_units:
+history: ''
+id: ''
+institution: ''
+keywords: ''
+keywords_vocabulary: 'GCMD Science Keywords'
+language: 'eng' # or fra
+license: 'This data may be redistributed and used without restriction.'
+naming_authority: ''
+processing_level: ''
+project: ''
+publisher_email:
+publisher_name:
+publisher_url:
+standard_name_vocabulary: 'CF Standard Name Table v27'
+summary: ''
+time_coverage_duration:
+time_coverage_end: ''
+time_coverage_resolution:
+time_coverage_start: ''
+title: ''
+
+# These ones are made up:
+language_country:
+
+publisher_country:
+progress_code:
+scope_code:
+
+instrument_1_id:  instrument_1_id
+instrument_1_version:  instrument_1_version
+instrument_1_type: 
+instrument_1_description:  instrument_1_description
+
+instrument_1_sensor_1_id:
+instrument_1_sensor_1_version:
+instrument_1_sensor_1_description:
+
+platform_name:
+platform_id:
+platform_role:
+platform_id_authority:

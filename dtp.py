@@ -10,7 +10,6 @@ import copy
 from erddapy import ERDDAP
 
 from yamlinclude import YamlIncludeConstructor
-from pygeometa.core import render_template
 
 import configparser
 import logging
@@ -44,9 +43,9 @@ def main(prog_args):
     pygm_yaml = translate_into_yaml(dtp_config, pygm_source)
     print(pygm_yaml)
 
-    print('process_info_schema...')
-    metadata_formatted = process_info_schema(dtp_config, pygm_yaml)
-    print(metadata_formatted)
+    print('output_yaml_source...')
+    final_result = output_yaml_source(dtp_config, pygm_yaml)
+    print(pygm_yaml)
 
     print('Exiting...')
     pass
@@ -113,23 +112,24 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             stations[id] = copy.deepcopy(mcf_template)
             dataset_url = row_series['tabledap'] if row_series['dataStructure'] == 'table' else row_series['griddap']
 
-            stations[id]['metadata']['identifier'] = id
-            stations[id]['metadata']['dataseturi'] = dataset_url
+            stations[id]['id'] = id
+            stations[id]['keywords_vocabulary'] = dataset_url
             
-            stations[id]['spatial']['datatype'] = 'textTable' if row_series['dataStructure'] == 'table' else 'grid'
+            #stations[id]['spatial']['datatype'] = 'textTable' if row_series['dataStructure'] == 'table' else 'grid'
 
-            stations[id]['spatial']['geomtype'] = row_series['cdm_data_type']
-            stations[id]['spatial']['bbox'] = '%s,%s,%s,%s' % (row_series['minLongitude (degrees_east)'], row_series['minLatitude (degrees_north)'], row_series['maxLongitude (degrees_east)'], row_series['maxLatitude (degrees_north)'])
+            stations[id]['geospatial_lon_min'] = row_series['minLongitude (degrees_east)']
+            stations[id]['geospatial_lat_min'] = row_series['minLatitude (degrees_north)']
+            stations[id]['geospatial_lon_max'] = row_series['maxLongitude (degrees_east)']
+            stations[id]['geospatial_lat_max'] = row_series['maxLatitude (degrees_north)']
 
-            stations[id]['identification']['title'] = row_series['title']
-            stations[id]['identification']['dates']['creation'] = row_series['minTime (UTC)']
-            stations[id]['identification']['temporal_begin'] = row_series['minTime (UTC)']
-            stations[id]['identification']['temporal_end'] = row_series['maxTime (UTC)']
-            stations[id]['identification']['url'] = dataset_url
-            stations[id]['identification']['abstract'] = row_series['summary']
 
-            stations[id]['distribution']['erddap']['url'] = dataset_url
-            stations[id]['distribution']['erddap']['name'] = row_series['title']
+            stations[id]['title'] = row_series['title']
+            stations[id]['date_created'] = row_series['minTime (UTC)']
+            stations[id]['time_coverage_start'] = row_series['minTime (UTC)']
+            stations[id]['time_coverage_end'] = row_series['maxTime (UTC)']
+            
+            stations[id]['summary'] = row_series['summary']
+
 
 
         print('Stations after ERDDAP call...')
@@ -169,7 +169,10 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             station_data['dataset'][field_name]['data_type'] = field_series['Data Type']
             station_data['dataset'][field_name]['units'] = field_series['units']
 
-        station_data['identification']['keywords']['default']['keywords'] = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']=='keywords')]['Value'].values
+        station_data['keywords'] = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']=='keywords')]['Value'].values
+
+        station_data['contributor_role'] = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']=='contributor_name')]['Value'].values
+        station_data['contributor_name'] = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']=='contributor_role')]['Value'].values
 
         return_value = station_data
 
@@ -188,25 +191,24 @@ def translate_into_yaml(dtp_config, pygm_source):
 
     return pygm_yaml
 
-# process pyYaml output into ISO metadata via pyGeometa
-# https://github.com/geopython/pygeometa#using-the-api-from-python
-def process_info_schema(dtp_config, pygm_yaml):
+def output_yaml_source(dtp_config, pygm_yaml):
     output = []
 
     for index_label, station_profile in enumerate(pygm_yaml['erddap']):
-        dtp_logger.info('Processing YAML for %s' % (station_profile))
+        dtp_logger.info('Dumping YAML for %s profile' % (station_profile))
 
-        file_name = '%s/%s.xml' % (dtp_config['output']['target_dir'], station_profile)
+        file_name = '%s/%s.yml' % (dtp_config['output']['target_dir'], station_profile)
 
         try:
-            iso_xml = render_template(pygm_yaml['erddap'][station_profile], schema_local=dtp_config['output']['target_schema'])
-            output.append(iso_xml)
+            yaml_output = yaml.dump(pygm_yaml['erddap'][station_profile])
+
+            output.append(yaml_output)
             with open(file_name, 'w') as file_writer:
-                file_writer.write(iso_xml)
+                file_writer.write(yaml_output)
             
         except Exception as ex:
-            dtp_logger.exception('PyGeoMeta render_template() failed for station: %s' % (station_profile), exc_info=ex)
-            dtp_logger.debug('Dumping Station YAML: %s' % (yaml.dump(pygm_yaml['erddap'][station_profile])))
+            dtp_logger.exception('Yaml output failed for station: %s' % (station_profile), exc_info=ex)
+            dtp_logger.debug('Dumping Station YAML: %s' % (pygm_yaml['erddap'][station_profile]))
             
     return output
 

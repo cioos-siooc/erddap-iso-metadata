@@ -17,3 +17,4 @@ CIOOS.pyproj
 /.vscode
 *.log
 SMA_bay_of_exploits_iso19115.xml
+/env
