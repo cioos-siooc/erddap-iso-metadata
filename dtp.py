@@ -162,6 +162,7 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
 
         station_data['dataset'] = {}
         
+        # TODO: UPDATE TO USE variable_1_x_blah notation
         for index_label, field_series in df_merge.iterrows():
             field_name = field_series['Variable Name']
             station_data['dataset'][field_name] = {}
@@ -199,6 +200,7 @@ def translate_into_yaml(dtp_config, pygm_source):
 def output_yaml_source(dtp_config, pygm_yaml):
     output = []
 
+    # TODO: use new config output settings and map to metadata-xml genereator
     for index_label, station_profile in enumerate(pygm_yaml['erddap']):
         dtp_logger.info('Dumping YAML for %s profile' % (station_profile))
 

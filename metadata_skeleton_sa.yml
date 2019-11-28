@@ -1,6 +1,8 @@
 # in this record, french is the default language
 # if english were the default language, there would be title_fra,summary_fra, etc
 
+# TODO: Find what fields/sections (if any) can be supplied by yamlinclude files
+
 acknowledgement: 
 cdm_data_type: 'TimeSeries'
 comment: 
