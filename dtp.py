@@ -33,19 +33,19 @@ def main(prog_args):
 
     print('load_data_source...')
     data_source = load_data_source(dtp_config, dtp_driver)
-    print(list(data_source))
+    #print(list(data_source))
 
     print('transform_data_source...')
     pygm_source = transform_data_source(dtp_config, data_source)
-    print(pygm_source)
+    #print(pygm_source)
 
     print('translate_into_yaml...')
     pygm_yaml = translate_into_yaml(dtp_config, pygm_source)
-    print(pygm_yaml)
+    #print(pygm_yaml)
 
     print('output_yaml_source...')
     final_result = output_yaml_source(dtp_config, pygm_yaml)
-    print(pygm_yaml)
+    #print(pygm_yaml)
 
     print('Exiting...')
     pass
@@ -103,7 +103,7 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
 
         # drop 'allDatasets' row
         stations_df.drop(labels=0, axis='index', inplace=True)
-        print(stations_df)
+        # print(stations_df)
 
         for index_label, row_series in stations_df.iterrows():
             id = row_series['datasetID']
@@ -133,7 +133,7 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
 
 
         print('Stations after ERDDAP call...')
-        print(stations)
+        # print(stations)
 
         return_value = stations
         pass
@@ -147,7 +147,7 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
         metadata_url = es.get_download_url(dataset_id='%s/index' % (station_id), response='csv', protocol='info')
         metadata = pd.read_csv(filepath_or_buffer=metadata_url)
         print(metadata_url)
-        print(metadata.head())
+        # print(metadata.head())
 
         # ERDDAP ISO XML provides a list of dataset field names (long & short), data types & units
         # of measurement, in case this becomes useful for the CIOOS metadata standard we can extend 
@@ -169,10 +169,15 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             station_data['dataset'][field_name]['data_type'] = field_series['Data Type']
             station_data['dataset'][field_name]['units'] = field_series['units']
 
-        station_data['keywords'] = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']=='keywords')]['Value'].values
+        station_data['keywords'] = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']=='keywords')]['Value'].values[0]
 
-        station_data['contributor_role'] = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']=='contributor_name')]['Value'].values
-        station_data['contributor_name'] = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']=='contributor_role')]['Value'].values
+        for index, field in enumerate(config['static_data']['opt_rec_variables'].split(',')):
+            field = field.strip()
+            try:
+                station_data[field] = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']==field)]['Value'].values[0]
+            except:
+                dtp_logger.info('Field: %s in dataset %s not found in NC_GLOBAL' % (field, station_id))
+                
 
         return_value = station_data
 
