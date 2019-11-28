@@ -4,12 +4,12 @@ import pytz
 import importlib
 import re
 import yaml
-import pydap
 import pandas as pd
 import copy
 from erddapy import ERDDAP
 
 from yamlinclude import YamlIncludeConstructor
+from googletrans import Translator
 
 import configparser
 import logging
@@ -85,7 +85,16 @@ def load_data_source(config, driver):
     return data
 
 def load_data_from_erddap(config, station_id=None, station_data=None):
-    mcf_template = yaml.load(open(config['static_data']['mcf_template'], 'r'), Loader=yaml.FullLoader)
+    # TODO: Fix and account for these issues
+    # YAML Input Currently Requires:
+    # - summary_fra (with content)
+    # - title_fra (with content)
+    # - keywords processed to strip out characters like ">" and "/"
+    # - contributor_name (with content)
+    mcf_template = yaml.load(open(config['static_data']['mcf_template'], 'r'), Loader=yaml.SafeLoader)
+
+    translate = config['static_data']['translate'].split('|')
+    translator = Translator()
 
     es = ERDDAP(
         server=config['dynamic_data']['erddap_server'],
@@ -124,13 +133,21 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
 
 
             stations[id]['title'] = row_series['title']
+            if translate[0] == 'en' and stations[id]['title_fra'] == '':
+                stations[id]['title_fra'] = translator.translate(row_series['title'], src=translate[0], dest=translate[1]).text
+            elif translate[0] == 'fr' and stations[id]['title_eng'] == '':
+                stations[id]['title_eng'] = translator.translate(row_series['title'], src=translate[0], dest=translate[1]).text
+
             stations[id]['date_created'] = row_series['minTime (UTC)']
+            stations[id]['date_modified'] = row_series['maxTime (UTC)']
             stations[id]['time_coverage_start'] = row_series['minTime (UTC)']
             stations[id]['time_coverage_end'] = row_series['maxTime (UTC)']
             
             stations[id]['summary'] = row_series['summary']
-
-
+            if translate[0] == 'en' and stations[id]['summary_fra'] == '':
+                stations[id]['summary_fra'] = translator.translate(row_series['summary'], src=translate[0], dest=translate[1]).text
+            elif translate[0] == 'fr' and stations[id]['summary_eng'] == '':
+                stations[id]['summary_eng'] = translator.translate(row_series['summary'], src=translate[0], dest=translate[1]).text
 
         print('Stations after ERDDAP call...')
         # print(stations)
@@ -170,7 +187,11 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             station_data['dataset'][field_name]['data_type'] = field_series['Data Type']
             station_data['dataset'][field_name]['units'] = field_series['units']
 
-        station_data['keywords'] = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']=='keywords')]['Value'].values[0]
+        # station_data[field] = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']==field)]['Value'].values[0]
+
+        keywords_prep = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']=='keywords')]['Value'].values[0]
+
+        station_data['keywords'] = keywords_prep.replace(' > ', ',').replace('/', ',').replace(', ', ',')
 
         for index, field in enumerate(config['static_data']['opt_rec_variables'].split(',')):
             field = field.strip()

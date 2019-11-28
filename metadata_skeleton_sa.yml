@@ -6,7 +6,7 @@
 acknowledgement: 
 cdm_data_type: 'TimeSeries'
 comment: 
-contributor_name: ''
+contributor_name: 'Marine Institute - CTec - SmartAtlantic'
 contributor_role: ''
 coverage_content_type: 
 creator_email: 
@@ -33,6 +33,7 @@ history: ''
 id: ''
 institution: ''
 keywords: ''
+keywords_fra: ''
 keywords_vocabulary: 'GCMD Science Keywords'
 language: 'eng' # or fra
 license: 'This data may be redistributed and used without restriction.'
@@ -44,18 +45,20 @@ publisher_name:
 publisher_url:
 standard_name_vocabulary: 'CF Standard Name Table v27'
 summary: ''
+summary_fra: ''
 time_coverage_duration:
 time_coverage_end: ''
 time_coverage_resolution:
 time_coverage_start: ''
 title: ''
+title_fra: ''
 
 # These ones are made up:
-language_country:
+language_country: "CAN"
 
-publisher_country:
+publisher_country: "CAN"
 progress_code:
-scope_code:
+scope_code: "dataset"
 
 instrument_1_id:  instrument_1_id
 instrument_1_version:  instrument_1_version
