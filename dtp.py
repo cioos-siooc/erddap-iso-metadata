@@ -101,6 +101,8 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
         protocol=config['dynamic_data']['erddap_protocol'],
     )
 
+    eov_list = config['static_data']['eov_list'].split(',')
+
     if station_id is None:
         #load all station data MCF skeleton
         stations = {}
@@ -122,7 +124,7 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             dataset_url = row_series['tabledap'] if row_series['dataStructure'] == 'table' else row_series['griddap']
 
             stations[id]['id'] = id
-            stations[id]['keywords_vocabulary'] = dataset_url
+            stations[id][config['dynamic_data']['dataset_url_field']] = dataset_url
             
             #stations[id]['spatial']['datatype'] = 'textTable' if row_series['dataStructure'] == 'table' else 'grid'
 
@@ -131,23 +133,21 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             stations[id]['geospatial_lon_max'] = row_series['maxLongitude (degrees_east)']
             stations[id]['geospatial_lat_max'] = row_series['maxLatitude (degrees_north)']
 
+            for field_name in config['dynamic_data']['global_translation_fields'].split(','):
+                print("Processing Translation Field: %s for dataset %s" % (field_name, id))
+                stations[id][field_name] = row_series[field_name]
 
-            stations[id]['title'] = row_series['title']
-            if translate[0] == 'en' and stations[id]['title_fra'] == '':
-                stations[id]['title_fra'] = translator.translate(row_series['title'], src=translate[0], dest=translate[1]).text
-            elif translate[0] == 'fr' and stations[id]['title_eng'] == '':
-                stations[id]['title_eng'] = translator.translate(row_series['title'], src=translate[0], dest=translate[1]).text
-
+                if translate[0] == 'en' and stations[id][field_name + '_fra'] == '':
+                    print("Translating English to French")
+                    stations[id][field_name + '_fra'] = translator.translate(row_series[field_name], src=translate[0], dest=translate[1]).text
+                elif translate[0] == 'fr' and stations[id][field_name + '_eng'] == '':
+                    print("Translating French to English")
+                    stations[id][field_name + '_eng'] = translator.translate(row_series[field_name], src=translate[0], dest=translate[1]).text
+            
             stations[id]['date_created'] = row_series['minTime (UTC)']
             stations[id]['date_modified'] = row_series['maxTime (UTC)']
             stations[id]['time_coverage_start'] = row_series['minTime (UTC)']
             stations[id]['time_coverage_end'] = row_series['maxTime (UTC)']
-            
-            stations[id]['summary'] = row_series['summary']
-            if translate[0] == 'en' and stations[id]['summary_fra'] == '':
-                stations[id]['summary_fra'] = translator.translate(row_series['summary'], src=translate[0], dest=translate[1]).text
-            elif translate[0] == 'fr' and stations[id]['summary_eng'] == '':
-                stations[id]['summary_eng'] = translator.translate(row_series['summary'], src=translate[0], dest=translate[1]).text
 
         print('Stations after ERDDAP call...')
         # print(stations)
@@ -158,6 +158,8 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
     else:
         #load specific station data into MCF skeleton
         print('Loading ERDDAP metadata for station: %s' % (station_id))
+
+        keywords_field = config['dynamic_data']['keywords_field']
 
         es.dataset_id = station_id
 
@@ -189,10 +191,23 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
 
         # station_data[field] = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']==field)]['Value'].values[0]
 
-        keywords_prep = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']=='keywords')]['Value'].values[0]
+        keywords_prep = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']==keywords_field)]['Value'].values[0]
 
-        station_data['keywords'] = keywords_prep.replace(' > ', ',').replace('/', ',').replace(', ', ',')
+        station_data[keywords_field] = keywords_prep.replace(' > ', ',').replace('/', ',').replace(', ', ',')
 
+        alt_lang_keywords = []
+        
+        for eov in eov_list:
+            eov = eov.strip()
+            if re.search(eov, station_data[keywords_field], re.IGNORECASE):
+                alt_lang_keywords.append(eov)
+
+        if translate[0] == 'en' and station_data[keywords_field + '_fra'] == '':
+            station_data[keywords_field + '_fra'] = ','.join(alt_lang_keywords)
+
+        elif translate[0] == 'fr' and station_data[keywords_field + '_eng'] == '':
+            station_data[keywords_field + '_eng'] = ','.join(alt_lang_keywords)
+        
         for index, field in enumerate(config['static_data']['opt_rec_variables'].split(',')):
             field = field.strip()
             try:
