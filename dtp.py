@@ -1,4 +1,5 @@
 import os, sys, getopt
+import subprocess
 from datetime import datetime
 import pytz
 import importlib
@@ -47,6 +48,8 @@ def main(prog_args):
     final_result = output_yaml_source(dtp_config, pygm_yaml)
     #print(pygm_yaml)
 
+    translate_to_xml(dtp_config, pygm_yaml)
+
     print('Exiting...')
     pass
 
@@ -91,7 +94,7 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
     # - title_fra (with content)
     # - keywords processed to strip out characters like ">" and "/"
     # - contributor_name (with content)
-    mcf_template = yaml.load(open(config['static_data']['mcf_template'], 'r'), Loader=yaml.SafeLoader)
+    mcf_template = yaml.safe_load(open(config['static_data']['mcf_template'], 'r'))
 
     translate = config['static_data']['translate'].split('|')
     translator = Translator()
@@ -135,14 +138,14 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
 
             for field_name in config['dynamic_data']['global_translation_fields'].split(','):
                 print("Processing Translation Field: %s for dataset %s" % (field_name, id))
-                stations[id][field_name] = row_series[field_name]
+                stations[id][field_name] = re.sub('[\r\n]', '', row_series[field_name])
 
                 if translate[0] == 'en' and stations[id][field_name + '_fra'] == '':
                     print("Translating English to French")
-                    stations[id][field_name + '_fra'] = translator.translate(row_series[field_name], src=translate[0], dest=translate[1]).text
+                    stations[id][field_name + '_fra'] = translator.translate(stations[id][field_name], src=translate[0], dest=translate[1]).text
                 elif translate[0] == 'fr' and stations[id][field_name + '_eng'] == '':
                     print("Translating French to English")
-                    stations[id][field_name + '_eng'] = translator.translate(row_series[field_name], src=translate[0], dest=translate[1]).text
+                    stations[id][field_name + '_eng'] = translator.translate(stations[id][field_name], src=translate[0], dest=translate[1]).text
             
             stations[id]['date_created'] = row_series['minTime (UTC)']
             stations[id]['date_modified'] = row_series['maxTime (UTC)']
@@ -254,6 +257,30 @@ def output_yaml_source(dtp_config, pygm_yaml):
             dtp_logger.debug('Dumping Station YAML: %s' % (pygm_yaml['erddap'][station_profile]))
             
     return output
+
+def translate_to_xml(config, pygm_yaml):
+    exec_cmd = "%s %s %s ".lstrip() % (
+        config['output']['profile_language'], 
+        config['output']['profile_generator'], 
+        config['output']['additional_arguments']
+    )
+    
+    dtp_logger.info("Translating to XML using: %s" % (exec_cmd))
+    print("Translating to XML using: %s" % (exec_cmd))
+
+    for index_label, station_profile in enumerate(pygm_yaml['erddap']):
+        yaml_path = "%s/%s.yml" % (config['output']['target_dir'], station_profile)
+
+        print("YAML Path: %s" % (yaml_path))
+
+        out = subprocess.run(
+            exec_cmd % (yaml_path), 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.STDOUT
+        )
+
+        print("Output: %s" % (out.stdout))
+
 
 
 if __name__ == '__main__':

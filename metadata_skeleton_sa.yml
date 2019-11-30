@@ -40,9 +40,9 @@ license: 'This data may be redistributed and used without restriction.'
 naming_authority: ''
 processing_level: ''
 project: ''
-publisher_email:
-publisher_name:
-publisher_url:
+publisher_email: SmartBay@smartbay.ca
+publisher_name: SmartAtlantic
+publisher_url: https://www.smartatlantic.ca/
 standard_name_vocabulary: 'CF Standard Name Table v27'
 summary: ''
 summary_fra: ''
@@ -52,6 +52,7 @@ time_coverage_resolution:
 time_coverage_start: ''
 title: ''
 title_fra: ''
+erddap_dataset_url: ''
 
 # These ones are made up:
 language_country: "CAN"
