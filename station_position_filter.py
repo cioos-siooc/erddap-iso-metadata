@@ -16,26 +16,56 @@ def main(prog_args, config):
 
   print(config)
 
+  lat_adjust = float(prog_args.lat_adjust)
+  lon_adjust = float(prog_args.lon_adjust)
+  
   with urllib.request.urlopen(stations_url) as url:
     stations = json.loads(url.read().decode())
       
+  station_locs = {}
   for station_name in stations['stations']:
     station = stations['stations'][station_name]
+    station_locs[station['erddap_id']] = station['location']
     print("%s %s %s" % (station_name, station['erddap_id'], station['location']))
 
+  print(station_locs)
   print(config['output']['target_dir'])
   files = os.scandir(config['output']['target_dir'])
 
   for file in files:
     load_path = "%s/%s" % (config['output']['target_dir'], file.name)
-    yaml_file = yaml.safe_load(load_path)
-    print(file)
+
+    with open(load_path) as f:
+      yaml_file = yaml.safe_load(f)
+
+    station_key = file.name.replace('.yml', '') # file name minus extension
+
+    print("Station: %s" % (station_key))
+    
+    value = station_locs[station_key]
+    
+    print("Y Lat min %s" % (yaml_file['geospatial_lat_min']))
+    print("Y Lat max %s" % (yaml_file['geospatial_lat_max']))
+    print("Y Lon min %s" % (yaml_file['geospatial_lon_min']))
+    print("Y Lon max %s" % (yaml_file['geospatial_lon_max']))
+
+    yaml_file['geospatial_lat_min'] = value[0] + lat_adjust * -1
+    yaml_file['geospatial_lat_max'] = value[0] + lat_adjust
+    yaml_file['geospatial_lon_min'] = value[1] + lon_adjust * -1
+    yaml_file['geospatial_lon_max'] = value[1] + lon_adjust
+
+    with open(load_path, "w") as f:
+      yaml.dump(yaml_file, f)
+    
 
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
   parser.add_argument("-c", "--config", help="use this configuration file", default='dtp_config.ini', action="store")
   parser.add_argument("-u", "--url", help="source url for json file", default='https://www.smartatlantic.ca/stations.json', action="store")
+  parser.add_argument("--lat_adjust", help="how much to adjust min/max latitude by", default='0.02', action="store")
+  parser.add_argument("--lon_adjust", help="how much to adjust min/max longitude by", default='0.02', action="store")
+
   args = parser.parse_args()
 
   config = configparser.ConfigParser()

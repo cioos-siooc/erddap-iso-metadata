@@ -48,6 +48,16 @@ def main(prog_args):
     final_result = output_yaml_source(dtp_config, pygm_yaml)
     #print(pygm_yaml)
 
+    if dtp_config['output']['pre_processor']:
+        print("Running pre_processor: %s" % (dtp_config['output']['pre_processor']))
+        dtp_logger.info("Running pre_processor: %s" % (dtp_config['output']['pre_processor']))
+
+        out = subprocess.run(dtp_config['output']['pre_processor'])
+
+        print(out)
+        dtp_logger.debug(out)
+
+
     translate_to_xml(dtp_config, pygm_yaml)
 
     print('Exiting...')
@@ -269,7 +279,7 @@ def translate_to_xml(config, pygm_yaml):
     print("Translating to XML using: %s" % (exec_cmd))
 
     for index_label, station_profile in enumerate(pygm_yaml['erddap']):
-        yaml_path = "%s/%s.yml" % (config['output']['target_dir'], station_profile)
+        yaml_path = os.path.abspath("%s/%s.yml" % (config['output']['target_dir'], station_profile))
 
         print("YAML Path: %s" % (yaml_path))
 
