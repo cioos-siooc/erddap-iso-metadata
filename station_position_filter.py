@@ -42,21 +42,23 @@ def main(prog_args, config):
 
     print("Station: %s" % (station_key))
     
-    value = station_locs[station_key]
-    
-    print("Y Lat min %s" % (yaml_file['geospatial_lat_min']))
-    print("Y Lat max %s" % (yaml_file['geospatial_lat_max']))
-    print("Y Lon min %s" % (yaml_file['geospatial_lon_min']))
-    print("Y Lon max %s" % (yaml_file['geospatial_lon_max']))
+    try:
+      value = station_locs[station_key]
+      
+      print("Y Lat min %s" % (yaml_file['geospatial_lat_min']))
+      print("Y Lat max %s" % (yaml_file['geospatial_lat_max']))
+      print("Y Lon min %s" % (yaml_file['geospatial_lon_min']))
+      print("Y Lon max %s" % (yaml_file['geospatial_lon_max']))
 
-    yaml_file['geospatial_lat_min'] = value[0] + lat_adjust * -1
-    yaml_file['geospatial_lat_max'] = value[0] + lat_adjust
-    yaml_file['geospatial_lon_min'] = value[1] + lon_adjust * -1
-    yaml_file['geospatial_lon_max'] = value[1] + lon_adjust
+      yaml_file['geospatial_lat_min'] = value[0] + lat_adjust * -1
+      yaml_file['geospatial_lat_max'] = value[0] + lat_adjust
+      yaml_file['geospatial_lon_min'] = value[1] + lon_adjust * -1
+      yaml_file['geospatial_lon_max'] = value[1] + lon_adjust
 
-    with open(load_path, "w") as f:
-      yaml.dump(yaml_file, f)
-    
+      with open(load_path, "w") as f:
+        yaml.dump(yaml_file, f)
+    except KeyError as ex:
+      print("YAML file '%s' does not match expected list of stations: %s" % (file.name, ex))
 
 
 if __name__ == '__main__':

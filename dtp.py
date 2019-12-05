@@ -60,6 +60,15 @@ def main(prog_args):
 
     translate_to_xml(dtp_config, pygm_yaml)
 
+    if dtp_config['output']['post_processor']:
+        print("Running post_processor: %s" % (dtp_config['output']['post_processor']))
+        dtp_logger.info("Running post_processor: %s" % (dtp_config['output']['post_processor']))
+
+        out = subprocess.run(dtp_config['output']['post_processor'])
+
+        print(out)
+        dtp_logger.debug(out)
+
     print('Exiting...')
     pass
 
@@ -278,18 +287,26 @@ def translate_to_xml(config, pygm_yaml):
     dtp_logger.info("Translating to XML using: %s" % (exec_cmd))
     print("Translating to XML using: %s" % (exec_cmd))
 
+    if config['output']['working_dir']:
+        print("Changing Working Directory to %s" % (config['output']['working_dir']))
+        os.chdir(config['output']['working_dir'])
+
     for index_label, station_profile in enumerate(pygm_yaml['erddap']):
         yaml_path = os.path.abspath("%s/%s.yml" % (config['output']['target_dir'], station_profile))
-
+        
         print("YAML Path: %s" % (yaml_path))
 
-        out = subprocess.run(
-            exec_cmd % (yaml_path), 
-            stdout=subprocess.PIPE, 
-            stderr=subprocess.STDOUT
-        )
+        if os.path.isfile(yaml_path):
+            print("YAML Path Valid.")
+            out = subprocess.run(
+                exec_cmd % (yaml_path), 
+                stdout=subprocess.PIPE, 
+                stderr=subprocess.STDOUT
+            )
 
-        print("Output: %s" % (out.stdout))
+            print("Output: %s" % (out.stdout))
+        else:
+            print("ERROR: YAML source file \"%s\" not found!  Check Working direcotry and target directory paths in configuration!" % (yaml_path))
 
 
 
