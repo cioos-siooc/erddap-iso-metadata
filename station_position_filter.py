@@ -33,32 +33,33 @@ def main(prog_args, config):
   files = os.scandir(config['output']['target_dir'])
 
   for file in files:
-    load_path = "%s/%s" % (config['output']['target_dir'], file.name)
+    if file.name.endswith('yml'):
+      load_path = "%s/%s" % (config['output']['target_dir'], file.name)
 
-    with open(load_path) as f:
-      yaml_file = yaml.safe_load(f)
+      with open(load_path) as f:
+        yaml_file = yaml.safe_load(f)
 
-    station_key = file.name.replace('.yml', '') # file name minus extension
+      station_key = file.name.replace('.yml', '') # file name minus extension
 
-    print("Station: %s" % (station_key))
-    
-    try:
-      value = station_locs[station_key]
+      print("Station: %s" % (station_key))
       
-      print("Y Lat min %s" % (yaml_file['geospatial_lat_min']))
-      print("Y Lat max %s" % (yaml_file['geospatial_lat_max']))
-      print("Y Lon min %s" % (yaml_file['geospatial_lon_min']))
-      print("Y Lon max %s" % (yaml_file['geospatial_lon_max']))
+      try:
+        value = station_locs[station_key]
+        
+        print("Y Lat min %s" % (yaml_file['geospatial_lat_min']))
+        print("Y Lat max %s" % (yaml_file['geospatial_lat_max']))
+        print("Y Lon min %s" % (yaml_file['geospatial_lon_min']))
+        print("Y Lon max %s" % (yaml_file['geospatial_lon_max']))
 
-      yaml_file['geospatial_lat_min'] = value[0] + lat_adjust * -1
-      yaml_file['geospatial_lat_max'] = value[0] + lat_adjust
-      yaml_file['geospatial_lon_min'] = value[1] + lon_adjust * -1
-      yaml_file['geospatial_lon_max'] = value[1] + lon_adjust
+        yaml_file['geospatial_lat_min'] = value[0] + lat_adjust * -1
+        yaml_file['geospatial_lat_max'] = value[0] + lat_adjust
+        yaml_file['geospatial_lon_min'] = value[1] + lon_adjust * -1
+        yaml_file['geospatial_lon_max'] = value[1] + lon_adjust
 
-      with open(load_path, "w") as f:
-        yaml.dump(yaml_file, f)
-    except KeyError as ex:
-      print("YAML file '%s' does not match expected list of stations: %s" % (file.name, ex))
+        with open(load_path, "w") as f:
+          yaml.dump(yaml_file, f)
+      except KeyError as ex:
+        print("YAML file '%s' does not match expected list of stations: %s" % (file.name, ex))
 
 
 if __name__ == '__main__':
