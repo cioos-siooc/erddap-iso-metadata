@@ -110,12 +110,6 @@ def load_data_source(config, driver):
     return data
 
 def load_data_from_erddap(config, station_id=None, station_data=None):
-    # TODO: Fix and account for these issues
-    # YAML Input Currently Requires:
-    # - summary_fra (with content)
-    # - title_fra (with content)
-    # - keywords processed to strip out characters like ">" and "/"
-    # - contributor_name (with content)
     mcf_template = yaml.safe_load(open(config['static_data']['mcf_template'], 'r'))
 
     translate = config['static_data']['translate'].split('|')
@@ -184,9 +178,6 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             stations[id]['time_coverage_start'] = row_series['minTime (UTC)']
             stations[id]['time_coverage_end'] = row_series['maxTime (UTC)']
 
-        print('Stations after ERDDAP call...')
-        # print(stations)
-
         return_value = stations
 
     else:
@@ -199,8 +190,6 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
 
         metadata_url = es.get_download_url(dataset_id='%s/index' % (station_id), response='csv', protocol='info')
         metadata = pd.read_csv(filepath_or_buffer=metadata_url)
-        print(metadata_url)
-        # print(metadata.head())
 
         # ERDDAP ISO XML provides a list of dataset field names (long & short), data types & units
         # of measurement, in case this becomes useful for the CIOOS metadata standard we can extend 
@@ -322,7 +311,9 @@ def translate_to_xml(config, pygm_yaml):
 
             print("Output: %s" % (out.stdout))
         else:
-            print("ERROR: YAML source file \"%s\" not found!  Check Working direcotry and target directory paths in configuration!" % (yaml_path))
+            err_msg = "ERROR: YAML source file \"%s\" not found!  Check Working direcotry and target directory paths in configuration!" % (yaml_path)
+            dtp_logger.error(err_msg)
+            print(err_msg)
 
 
 
