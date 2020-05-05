@@ -1,4 +1,5 @@
-import os, sys, getopt
+#import os, sys, getopt
+import os
 import subprocess
 from datetime import datetime
 import pytz
@@ -11,9 +12,8 @@ from erddapy import ERDDAP
 
 from xml.sax.saxutils import escape # use defusedxml instead
 from yamlinclude import YamlIncludeConstructor
-from googletrans import Translator
+# from googletrans import Translator
 # from translate import Translator
-
 
 import configparser
 import logging
@@ -112,10 +112,6 @@ def load_data_source(config, driver):
 def load_data_from_erddap(config, station_id=None, station_data=None):
     mcf_template = yaml.safe_load(open(config['static_data']['mcf_template'], 'r'))
 
-    translate = config['static_data']['translate'].split('|')
-    translator = Translator()
-    #translator = Translator(to_lang=translate[1])
-
     es = ERDDAP(
         server=config['dynamic_data']['erddap_server'],
         protocol=config['dynamic_data']['erddap_protocol'],
@@ -152,26 +148,6 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             stations[id]['geospatial_lat_min'] = row_series['minLatitude (degrees_north)']
             stations[id]['geospatial_lon_max'] = row_series['maxLongitude (degrees_east)']
             stations[id]['geospatial_lat_max'] = row_series['maxLatitude (degrees_north)']
-
-            for field_name in config['dynamic_data']['global_translation_fields'].split(','):
-                print("Processing Translation Field: %s for dataset %s" % (field_name, id))
-                stations[id][field_name] = re.sub('[\r\n]', '', row_series[field_name]).replace(': ', ' - ')
-
-                if translate[0] == 'en' and stations[id][field_name + '_fra'] == '':
-                    alt_lang = 'fra'
-                elif translate[0] == 'fr' and stations[id][field_name + '_eng'] == '':
-                    alt_lang = 'eng'
-
-                print("Translating %s to %s" % (translate[0], translate[1]))
-                try:
-                    alt_text = translator.translate(stations[id][field_name], src=translate[0], dest=translate[1]).text
-                    #alt_text = translator.translate(stations[id][field_name])
-
-                    stations[id][field_name + '_' + alt_lang] = escape(alt_text)
-                except Exception as jde:
-                    print("Field: %s, From: %s to %s \"%s\", ERROR: %s" % (field_name, translate[0], translate[1], stations[id][field_name], jde))
-
-                stations[id][field_name] = escape(stations[id][field_name])
 
             stations[id]['date_created'] = row_series['minTime (UTC)']
             stations[id]['date_modified'] = row_series['maxTime (UTC)']
@@ -225,10 +201,10 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             if re.search(eov, station_data[keywords_field], re.IGNORECASE):
                 alt_lang_keywords.append(eov)
 
-        if translate[0] == 'en' and station_data[keywords_field + '_fra'] == '':
+        if station_data['language'] == 'eng' and station_data[keywords_field + '_fra'] == '':
             alt_lang = 'fra'
 
-        elif translate[0] == 'fr' and station_data[keywords_field + '_eng'] == '':
+        elif station_data['language'] == 'fra' and station_data[keywords_field + '_eng'] == '':
             alt_lang = 'eng'
 
         station_data[keywords_field + '_' + alt_lang] = escape(','.join(alt_lang_keywords))
@@ -289,6 +265,9 @@ def translate_to_xml(config, pygm_yaml):
         config['output']['additional_arguments']
     )
     
+    dtp_logger.info("Current Working Directory: %s" % (os.getcwd()))
+    print("Current Working Directory: %s" % (os.getcwd()))
+    
     dtp_logger.info("Translating to XML using: %s" % (exec_cmd))
     print("Translating to XML using: %s" % (exec_cmd))
 
@@ -303,6 +282,8 @@ def translate_to_xml(config, pygm_yaml):
 
         if os.path.isfile(yaml_path):
             print("YAML Path Valid.")
+            print("Executing: %s" % (exec_cmd % (yaml_path)))
+            
             out = subprocess.run(
                 exec_cmd % (yaml_path), 
                 stdout=subprocess.PIPE, 
