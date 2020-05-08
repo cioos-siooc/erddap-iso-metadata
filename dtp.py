@@ -12,8 +12,6 @@ from erddapy import ERDDAP
 
 from xml.sax.saxutils import escape # use defusedxml instead
 from yamlinclude import YamlIncludeConstructor
-# from googletrans import Translator
-# from translate import Translator
 
 import configparser
 import logging
@@ -79,12 +77,8 @@ def main(prog_args):
 def read_config(prog_args):
     config = configparser.ConfigParser()
     
-    if prog_args.config:
-        print("Using supplied configuration: %s" % (prog_args.config))
-        config.read(prog_args.config)
-    else:
-        print("No configuration file specified, using default: dtp_config.ini")
-        config.read('dtp_config.ini')
+    print("Using configuration: %s" % (prog_args.config))
+    config.read(prog_args.config)
 
     return config
 
@@ -300,7 +294,7 @@ def translate_to_xml(config, pygm_yaml):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("-c", "--config", help="use this configuration file", action="store")
+    parser.add_argument("-c", "--config", help="use this configuration file", default="dtp_config.ini", action="store")
     args = parser.parse_args()
 
     main(args)

@@ -57,7 +57,7 @@ def main(prog_args, config):
         yaml_file['geospatial_lon_max'] = value[1] + lon_adjust
 
         with open(load_path, "w") as f:
-          yaml.dump(yaml_file, f)
+          yaml.safe_dump(yaml_file, f)
       except KeyError as ex:
         print("YAML file '%s' does not match expected list of stations: %s" % (file.name, ex))
 
