@@ -12,9 +12,12 @@ coverage_content_type:
 creator_email: 
 creator_name: 
 creator_url: 
+creator_type: 
+data_maintenance_note: 
 date_created: 
 date_issued: 
 date_modified: 
+distributor_name: 
 geospatial_bounds:
 geospatial_lat_max: 
 geospatial_lat_min: 
@@ -30,6 +33,8 @@ geospatial_vertical_positive:
 geospatial_vertical_resolution:
 geospatial_vertical_units:
 history: ''
+# mdb:MD_Metadata/mdb:metadataIdentifier/mcc:MD_Identifier/mcc:code
+# should include a UUID/GUID
 id: ''
 institution: ''
 keywords: ''
@@ -41,7 +46,9 @@ naming_authority: ''
 processing_level: ''
 project: ''
 publisher_email: SmartBay@smartbay.ca
+publisher_institution: 
 publisher_name: SmartAtlantic
+publisher_type: 
 publisher_url: https://www.smartatlantic.ca/
 standard_name_vocabulary: 'CF Standard Name Table v27'
 summary: ''
@@ -53,6 +60,7 @@ time_coverage_start: ''
 title: ''
 title_fra: ''
 erddap_dataset_url: ''
+use_constraints:
 
 # These ones are made up:
 language_country: "CAN"

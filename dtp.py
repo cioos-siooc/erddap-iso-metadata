@@ -111,7 +111,7 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
         protocol=config['dynamic_data']['erddap_protocol'],
     )
 
-    eov_list = config['static_data']['eov_list'].split(',')
+    # eov_list = config['static_data']['eov_list'].split(',')
 
     if station_id is None:
         #load all station data MCF skeleton
@@ -133,7 +133,6 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             stations[id] = copy.deepcopy(mcf_template)
             dataset_url = row_series['tabledap'] if row_series['dataStructure'] == 'table' else row_series['griddap']
 
-            stations[id]['id'] = escape(id)
             stations[id][config['dynamic_data']['dataset_url_field']] = escape(dataset_url)
             
             #stations[id]['spatial']['datatype'] = 'textTable' if row_series['dataStructure'] == 'table' else 'grid'
@@ -146,6 +145,8 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             stations[id]['date_created'] = row_series['minTime (UTC)']
             stations[id]['date_modified'] = row_series['maxTime (UTC)']
             stations[id]['time_coverage_start'] = row_series['minTime (UTC)']
+            # add options for progress_code when onGoing is the proper setting vs historical datasets
+            # where an endtime is more appropriate
             stations[id]['time_coverage_end'] = row_series['maxTime (UTC)']
 
         return_value = stations
@@ -154,12 +155,18 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
         #load specific station data into MCF skeleton
         print('Loading ERDDAP metadata for station: %s' % (station_id))
 
-        keywords_field = config['dynamic_data']['keywords_field']
+        # keywords_field = config['dynamic_data']['keywords_field']
 
         es.dataset_id = station_id
 
         metadata_url = es.get_download_url(dataset_id='%s/index' % (station_id), response='csv', protocol='info')
         metadata = pd.read_csv(filepath_or_buffer=metadata_url)
+
+        station_data['id'] = erddap_meta(metadata, 'uuid')['value']
+        station_data['title'] = erddap_meta(metadata, 'title')['value']
+        station_data['title_fra'] = erddap_meta(metadata, 'title_fra')['value']
+        station_data['summary'] = erddap_meta(metadata, 'summary')['value']
+        station_data['summary_fra'] = erddap_meta(metadata, 'summary_fra')['value']
 
         # ERDDAP ISO XML provides a list of dataset field names (long & short), data types & units
         # of measurement, in case this becomes useful for the CIOOS metadata standard we can extend 
@@ -182,39 +189,40 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             station_data['dataset'][field_name]['data_type'] = field_series['Data Type']
             station_data['dataset'][field_name]['units'] = field_series['units']
 
-        # station_data[field] = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']==field)]['Value'].values[0]
-
-        keywords_prep = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']==keywords_field)]['Value'].values[0]
-
-        station_data[keywords_field] = keywords_prep.replace(' > ', ',').replace('/', ',').replace(', ', ',').replace('\n', ' ')
-
-        alt_lang_keywords = []
-        
-        for eov in eov_list:
-            eov = eov.strip()
-            if re.search(eov, station_data[keywords_field], re.IGNORECASE):
-                alt_lang_keywords.append(eov)
-
-        if station_data['language'] == 'eng' and station_data[keywords_field + '_fra'] == '':
-            alt_lang = 'fra'
-
-        elif station_data['language'] == 'fra' and station_data[keywords_field + '_eng'] == '':
-            alt_lang = 'eng'
-
-        station_data[keywords_field + '_' + alt_lang] = escape(','.join(alt_lang_keywords))
-
-        station_data[keywords_field] = escape(station_data[keywords_field])
-
         for index, field in enumerate(config['static_data']['opt_rec_variables'].split(',')):
             field = field.strip()
             try:
-                station_data[field] = escape(metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']==field)]['Value'].values[0])
+                station_data[field] = escape(erddap_meta(metadata, field)['value'])
             except:
                 dtp_logger.info('Field: %s in dataset %s not found in NC_GLOBAL' % (field, station_id))
                 
 
         return_value = station_data
 
+
+    return return_value
+
+# Extracts data from the erddap metadata Pandas dataframe, NC_GLOBAL and 
+# row type attribute are assumed as defaults for variable specific values 
+# you'll need to specify those features
+def erddap_meta(metadata, attribute_name, row_type='attribute', var_name='NC_GLOBAL'):
+    # Example: uuid = metadata[(metadata['Variable Name']=='NC_GLOBAL') & (metadata['Attribute Name']=='uuid')]['Value'].values[0]
+    return_value = {
+        'value':None,
+        'type':None
+    }
+    
+    try:
+        return_value['value'] = metadata[(metadata['Variable Name']==var_name) & (metadata['Attribute Name']==attribute_name)]['Value'].values[0]
+        return_value['type'] = metadata[(metadata['Variable Name']==var_name) & (metadata['Attribute Name']==attribute_name)]['Data Type'].values[0]
+    except IndexError:
+        message = "IndexError extracting ERDDAP Metadata: attribute: %s, row_type: %s, var_name: %s" % (attribute_name, row_type, var_name)
+        dtp_logger.debug(message)
+
+        # print(message)
+        # print(metadata[(metadata['Variable Name']==var_name) & (metadata['Attribute Name']==attribute_name)]['Value'])
+        # print(metadata[(metadata['Variable Name']==var_name) & (metadata['Attribute Name']==attribute_name)]['Data Type'])
+        # print(metadata)
 
     return return_value
 
