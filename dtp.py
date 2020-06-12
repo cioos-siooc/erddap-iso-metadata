@@ -1,5 +1,5 @@
-#import os, sys, getopt
 import os
+import ssl
 import subprocess
 from datetime import datetime
 import pytz
@@ -16,6 +16,8 @@ from yamlinclude import YamlIncludeConstructor
 import configparser
 import logging
 import argparse
+
+ssl._create_default_https_context = ssl._create_unverified_context
 
 logging.basicConfig(filename='dtp.log', level=logging.DEBUG)
 
