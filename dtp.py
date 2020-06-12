@@ -189,7 +189,7 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             station_data['dataset'][field_name]['data_type'] = field_series['Data Type']
             station_data['dataset'][field_name]['units'] = field_series['units']
 
-        keyword_variables = [keyword.strip() for keyword in config['static_data']['keyword_variables'].split(',')]
+        sanitize_fields = [keyword.strip() for keyword in config['static_data']['sanitize_fields'].split(',')]
 
         for index, field in enumerate(config['static_data']['opt_rec_variables'].split(',')):
             field = field.strip()
@@ -197,15 +197,15 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             try:
                 field_value = erddap_meta(metadata, field)['value']
 
-                if field in keyword_variables:
-                    field_value = field_value.replace(' > ', ', ')
+                if field in sanitize_fields:
+                    field_value = field_value.replace(' > ', ', ').replace('/', '-').replace('(', '').replace(')', '')
                 
                 station_data[field] = escape(field_value)
             except:
                 dtp_logger.info('Field: %s in dataset %s not found in NC_GLOBAL.  Value: %s' % (field, station_id, field_value))
                 
         # Remove duplicate keywords - mostly to account for duplicates added by repetitive GCMD entries
-        for keyword_field in keyword_variables:
+        for keyword_field in sanitize_fields:
             keywords = [keyword.strip() for keyword in station_data[keyword_field].split(',')]
             station_data[keyword_field] = ','.join(set(keywords))
 
