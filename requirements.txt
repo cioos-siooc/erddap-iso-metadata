@@ -35,7 +35,7 @@ Pygments==2.7.4
 PyMySQL==0.9.3
 python-dateutil==2.8.0
 pytz==2019.1
-PyYAML==5.1.1
+PyYAML==5.4
 pyyaml-include==1.1.1.1
 requests==2.22.0
 requests-ntlm==1.1.0
