@@ -9,6 +9,7 @@ import yaml
 import pandas as pd
 import copy
 from erddapy import ERDDAP
+from metadata_xml.template_functions import metadata_to_xml
 
 from xml.sax.saxutils import escape # use defusedxml instead
 from yamlinclude import YamlIncludeConstructor
@@ -51,29 +52,7 @@ def main(prog_args):
     final_result = output_yaml_source(dtp_config, pygm_yaml)
     #print(pygm_yaml)
 
-    if dtp_config['output']['pre_processor']:
-        print("Running pre_processor: %s" % (dtp_config['output']['pre_processor']))
-        dtp_logger.info("Running pre_processor: %s" % (dtp_config['output']['pre_processor']))
 
-        out = subprocess.run(dtp_config['output']['pre_processor'])
-
-        print(out)
-        dtp_logger.debug(out)
-
-
-    translate_to_xml(dtp_config, pygm_yaml)
-
-    if dtp_config['output']['post_processor']:
-        print("Running post_processor: %s" % (dtp_config['output']['post_processor']))
-        dtp_logger.info("Running post_processor: %s" % (dtp_config['output']['post_processor']))
-
-        out = subprocess.run(dtp_config['output']['post_processor'])
-
-        print(out)
-        dtp_logger.debug(out)
-
-    print('Exiting...')
-    pass
 
 # loads configuration data
 def read_config(prog_args):
@@ -273,45 +252,6 @@ def output_yaml_source(dtp_config, pygm_yaml):
             dtp_logger.debug('Dumping Station YAML: %s' % (pygm_yaml['erddap'][station_profile]))
             
     return output
-
-def translate_to_xml(config, pygm_yaml):
-    exec_cmd = "%s %s %s ".lstrip() % (
-        config['output']['profile_language'], 
-        config['output']['profile_generator'], 
-        config['output']['additional_arguments']
-    )
-    
-    dtp_logger.info("Current Working Directory: %s" % (os.getcwd()))
-    print("Current Working Directory: %s" % (os.getcwd()))
-    
-    dtp_logger.info("Translating to XML using: %s" % (exec_cmd))
-    print("Translating to XML using: %s" % (exec_cmd))
-
-    if config['output']['working_dir']:
-        print("Changing Working Directory to %s" % (config['output']['working_dir']))
-        os.chdir(config['output']['working_dir'])
-
-    for index_label, station_profile in enumerate(pygm_yaml['erddap']):
-        yaml_path = os.path.abspath("%s/%s.yml" % (config['output']['target_dir'], station_profile))
-        
-        print("YAML Path: %s" % (yaml_path))
-
-        if os.path.isfile(yaml_path):
-            print("YAML Path Valid.")
-            print("Executing: %s" % (exec_cmd % (yaml_path)))
-            
-            out = subprocess.run(
-                exec_cmd % (yaml_path), 
-                stdout=subprocess.PIPE, 
-                stderr=subprocess.STDOUT
-            )
-
-            print("Output: %s" % (out.stdout))
-        else:
-            err_msg = "ERROR: YAML source file \"%s\" not found!  Check Working direcotry and target directory paths in configuration!" % (yaml_path)
-            dtp_logger.error(err_msg)
-            print(err_msg)
-
 
 
 if __name__ == '__main__':

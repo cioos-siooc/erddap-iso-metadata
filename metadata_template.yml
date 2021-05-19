@@ -1,0 +1,130 @@
+# Most text fields can be either bilingual or not, eg either is valid:
+#
+#   comment: just in the main language
+#
+#   comment:
+#      en: in english
+#      fr: in french
+#
+
+metadata:
+  naming_authority:
+    en: namingauthority in en
+    fr: namingauthority in fr
+  identifier: 3f342f64-9348-11df-ba6a-0014c2c00eab
+  language: en
+  maintenance_note: maintenance_note
+  use_constraints:
+    limitations: limitations
+    licence:
+      title: Creative Commons Attribution 4.0
+      code: CC-BY-4.0
+      url: https://creativecommons.org/licenses/by/4.0/
+
+  comment: just in the main language
+
+  history:
+    en: history in english
+    fr: history in french
+  dates:
+    creation: 2011-11-11
+
+spatial:
+  bbox: [-141, 42, -52, 84]
+  polygon: polygon_data
+  vertical: [0, 10]
+  vertical_positive: down
+identification:
+  title:
+    en: title in english
+    fr: title in french
+  identifier: http://dx.doi.org/10.1093/ajae/aaq063
+
+  abstract:
+    en: abstract in French
+    fr: abstract in English
+  topic_category: elevation
+  dates:
+    publication: 2000-09-01T00:00:00Z
+    revision: 2000-09-01T00:00:00Z
+
+  keywords:
+    default:
+      en: [kw1 in English, kw2 in English, kw3 in English]
+      fr: [kw1 in French, kw2 in French, kw3 in French]
+    eov:
+      en: [oxygen]
+      fr: [oxygène]
+  temporal_begin: 1950-07-31
+  temporal_end: now
+  temporal_duration: P1D
+  time_coverage_resolution: P1D
+  acknowledgement: acknowledgement
+  status: onGoing
+  project:
+    en: [project_a, project_b]
+    fr: [project_a in french, project_b in french]
+contact:
+  - roles:
+      - custodian
+    organization:
+      name: Environment Canada
+      url: https://www.ec.gc.ca/
+      address: 4905 Dufferin Street
+      city: Toronto
+      country: Canada
+      email: foo@bar.ca
+    individual:
+      name: Shiela Jones
+      position: Scientist
+      email: foo@bar.ca
+  - roles:
+      - author
+    individual:
+      name: X Y
+      position: Scientist
+      email: foo2@bar.ca
+      country: Canada
+
+  - roles:
+      - distributor
+    organization:
+      name: Bill's Pubishing
+      address: 123 Main Street
+      city: Winnipeg
+      country: Canada
+      email: foo@bar.ca
+
+distribution:
+  - url: https://catalogue.hakai.org/erddap/tabledap/HakaiCTDKC10.html
+  - url: https://dd.meteo.gc.ca/bla.pdf
+    name: my pdf resource
+    description:
+      en: pdf description in English
+      fr: pdf description in French
+
+platform:
+  name: platform_name
+  authority: platform_authority
+  id: platform id
+  description: platform_description
+  instruments:
+    - id: 123
+      manufacturer: manufacturer en 1
+      version: A1.53
+      type:
+        en: type en 1
+        fr: type fr 1
+      description:
+        en: instrument description en 1
+        fr: instrument description fr 1
+instruments:
+  - id: id not in platform
+    manufacturer: manufacturer  not in platform
+    version: version not in platform
+    type:
+      en: type en not in platform
+      fr: type fr not in platform
+    description:
+      en: instrument description not in platform
+      fr: instrument description not in platform
