@@ -1,0 +1,130 @@
+# Most text fields can be either bilingual or not, eg either is valid:
+#
+#   comment: just in the main language
+#
+#   comment:
+#      en: in english
+#      fr: in french
+#
+
+metadata:
+  naming_authority:
+    en: ca.smartatlantic
+    fr: ca.smartatlantic
+  identifier: 
+  language: en
+  maintenance_note: 
+  use_constraints: 
+    limitations: 
+    licence:
+      title: Creative Commons Attribution 4.0
+      code: CC-BY-4.0
+      url: https://creativecommons.org/licenses/by/4.0/
+
+  comment: 
+
+  history:
+    en: 
+    fr: 
+  dates:
+    creation: 
+
+spatial:
+  bbox: []
+  polygon: []
+  vertical: []
+  vertical_positive: down
+identification:
+  title:
+    en: 
+    fr: 
+  identifier: 
+
+  abstract:
+    en: 
+    fr: 
+  topic_category: 
+  dates:
+    publication: 
+    revision: 
+
+  keywords:
+    default:
+      en: []
+      fr: []
+    eov:
+      en: []
+      fr: []
+  temporal_begin: 
+  temporal_end: 
+  temporal_duration: 
+  time_coverage_resolution: 
+  acknowledgement: 
+  status: 
+  project:
+    en: []
+    fr: []
+contact:
+  - roles:
+      - custodian
+    organization:
+      name: 
+      url: 
+      address: 
+      city: 
+      country: 
+      email: 
+    individual:
+      name: 
+      position: 
+      email: 
+  - roles:
+      - author
+    individual:
+      name: 
+      position: 
+      email: 
+      country: 
+
+  - roles:
+      - distributor
+    organization:
+      name: 
+      address: 
+      city: 
+      country: 
+      email: 
+
+distribution:
+  - url: 
+  - url: 
+    name: 
+    description:
+      en: 
+      fr: 
+
+platform:
+  name: 
+  authority: 
+  id: 
+  description: 
+  instruments:
+    - id: 
+      manufacturer: 
+      version: 
+      type:
+        en: 
+        fr: 
+      description:
+        en: 
+        fr: 
+instruments:
+  - id: 
+    manufacturer: 
+    version: 
+    type:
+      en: 
+      fr: 
+    description:
+      en: 
+      fr: 
