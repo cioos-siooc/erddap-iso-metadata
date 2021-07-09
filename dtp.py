@@ -9,6 +9,7 @@ import ssl
 import subprocess
 from datetime import datetime
 from xml.sax.saxutils import escape  # use defusedxml instead
+import validators
 
 import pandas as pd
 import pytz
@@ -32,8 +33,11 @@ def main(prog_args):
     print(dtp_config)
 
     print("load_driver...")
-    dtp_driver = load_driver(dtp_config)
-    print(dtp_driver)
+    if dtp_config["driver"]["driver_type"]:
+        dtp_driver = load_driver(dtp_config)
+        print(dtp_driver)
+    else:
+        dtp_driver = None
 
     print("load_data_source...")
     data_source = load_data_source(dtp_config, dtp_driver)
@@ -120,7 +124,23 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
                 else row_series["griddap"]
             )
 
-            stations[id]["distribution"][0]["url"] = escape(dataset_url)
+            sources = 0
+            stations[id]["distribution"][sources]["name"] = "ERDDAP Data Subset Form"
+            stations[id]["distribution"][sources]["url"] = escape(dataset_url)
+            stations[id]["distribution"][sources]["description"]["en"] = "ERDDAP's version of the OPeNDAP .html web page for this dataset. Specify a subset of the dataset and download the data via OPeNDAP or in many different file types."
+            stations[id]["distribution"][sources]["description"]["fr"] = "Version d'ERDDAP de la page Web OpenDAP .html pour ce jeu de données. Spécifiez un sous-ensemble du jeu de données et téléchargez les données via OpenDap ou dans de nombreux types de fichiers différents."
+            
+            if validators.url(row_series["infoUrl"]):
+                sources = sources + 1
+                stations[id]["distribution"].append({"url":"", "name":""})
+                stations[id]["distribution"][sources]["url"] = row_series["infoUrl"]
+                stations[id]["distribution"][sources]["name"] = "Information about dataset"
+
+            if validators.url(row_series["sourceUrl"]):
+                sources = sources + 1
+                stations[id]["distribution"].append({"url":"", "name":""})
+                stations[id]["distribution"][sources]["url"] = row_series["sourceUrl"]
+                stations[id]["distribution"][sources]["name"] = "Original source of data"
 
             # create bounding box
             stations[id]["spatial"]["bbox"] = [
@@ -130,8 +150,13 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
                 row_series["maxLatitude (degrees_north)"],
             ]
 
-            stations[id]["dates"]["creation"] = row_series["minTime (UTC)"]
-            stations[id]["dates"]["lastUpdate"] = row_series["maxTime (UTC)"]
+            # If date_published exists use that date, otherwise default to minTime (UTC)
+            if row_series.get("date_published"):
+                stations[id]["metadata"]["dates"]["publication"] = row_series["date_published"]
+            else:
+                stations[id]["metadata"]["dates"]["publication"] = row_series["minTime (UTC)"]
+
+            stations[id]["metadata"]["dates"]["revision"] = row_series.get("date_revised")
 
         return_value = stations
 
@@ -148,20 +173,38 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
         )
         metadata = pd.read_csv(filepath_or_buffer=metadata_url)
 
+        # if a depth min / max exists use those
+        if erddap_meta(metadata, "depth_min")["value"] and erddap_meta(metadata, "depth_max")["value"]:
+            station_data["spatial"]["vertical"] = [
+                erddap_meta(metadata, "depth_min")["value"],
+                erddap_meta(metadata, "depth_max")["value"],
+            ]
+        # if only a depth value exists set that as min/max
+        elif erddap_meta(metadata, "depth")["value"]:
+            station_data["spatial"]["vertical"] = [
+                erddap_meta(metadata, "depth")["value"],
+                erddap_meta(metadata, "depth")["value"],
+            ]
+        # invert altitude to be negative to match EPSG::5831 
+        elif erddap_meta(metadata, "altitude")["value"]:
+            station_data["spatial"]["vertical"] = [
+                erddap_meta(metadata, "altitude")["value"] * -1,
+                erddap_meta(metadata, "altitude")["value"] * -1,
+            ]
+
         station_data["metadata"]["identifier"] = erddap_meta(metadata, "uuid")["value"]
 
-        station_data["identification"]["title"]["en"] = erddap_meta(metadata, "title")[
-            "value"
-        ]
-        station_data["identification"]["title"]["fr"] = erddap_meta(
-            metadata, "title_fra"
-        )["value"]
-        station_data["identification"]["abstract"]["en"] = erddap_meta(
-            metadata, "summary"
-        )["value"]
-        station_data["identification"]["abstract"]["fr"] = erddap_meta(
-            metadata, "summary_fra"
-        )["value"]
+        station_data["identification"]["title"]["en"] = erddap_meta(metadata, "title")["value"]
+        station_data["identification"]["title"]["fr"] = erddap_meta(metadata, "title_fra")["value"]
+        station_data["identification"]["abstract"]["en"] = erddap_meta(metadata, "summary")["value"]
+        station_data["identification"]["abstract"]["fr"] = erddap_meta(metadata, "summary_fra")["value"]
+
+        station_data["identification"]["dates"]["creation"] = erddap_meta(metadata, "summary")["value"]
+        station_data["identification"]["dates"]["publication"] = erddap_meta(metadata, "summary_fra")["value"]
+
+
+        # TODO: Contact Fields
+
 
         # ERDDAP ISO XML provides a list of dataset field names (long & short), data types & units
         # of measurement, in case this becomes useful for the CIOOS metadata standard we can extend
@@ -170,24 +213,26 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
         # below most varible attributes from ERDDAP are extracted and pivoted to describe the field
         # actual field data types are extracted seperately and merged into the pivoted dataframe
         # for completeness
-        columns_pivot = metadata[
-            (metadata["Variable Name"] != "NC_GLOBAL")
-            & (metadata["Row Type"] != "variable")
-        ].pivot(index="Variable Name", columns="Attribute Name", values="Value")
-        col_data_types = metadata[(metadata["Row Type"] == "variable")][
-            ["Variable Name", "Data Type"]
-        ]
-        df_merge = pd.merge(columns_pivot, col_data_types, on="Variable Name")
+        # columns_pivot = metadata[
+        #         (metadata["Variable Name"] != "NC_GLOBAL") & 
+        #         (metadata["Row Type"] != "variable")
+        #     ].pivot(index="Variable Name", columns="Attribute Name", values="Value")
 
-        station_data["dataset"] = {}
+        # col_data_types = metadata[(metadata["Row Type"] == "variable")][
+        #     ["Variable Name", "Data Type"]
+        # ]
+
+        # df_merge = pd.merge(columns_pivot, col_data_types, on="Variable Name")
+
+        # station_data["dataset"] = {}
 
         # TODO: UPDATE TO USE variable_1_x_blah notation
-        for index_label, field_series in df_merge.iterrows():
-            field_name = field_series["Variable Name"]
-            station_data["dataset"][field_name] = {}
-            station_data["dataset"][field_name]["long_name"] = field_series["long_name"]
-            station_data["dataset"][field_name]["data_type"] = field_series["Data Type"]
-            station_data["dataset"][field_name]["units"] = field_series["units"]
+        # for index_label, field_series in df_merge.iterrows():
+        #     field_name = field_series["Variable Name"]
+        #     station_data["dataset"][field_name] = {}
+        #     station_data["dataset"][field_name]["long_name"] = field_series["long_name"]
+        #     station_data["dataset"][field_name]["data_type"] = field_series["Data Type"]
+        #     station_data["dataset"][field_name]["units"] = field_series["units"]
 
         sanitize_fields = [
             keyword.strip()
@@ -202,13 +247,13 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             try:
                 field_value = erddap_meta(metadata, field)["value"]
 
-                if field in sanitize_fields:
-                    field_value = (
-                        field_value.replace(" > ", ", ")
-                        .replace("/", "-")
-                        .replace("(", "")
-                        .replace(")", "")
-                    )
+                # if field in sanitize_fields:
+                #     field_value = (
+                #         field_value.replace(" > ", " &gt; ")
+                #         .replace("/", "-")
+                #         .replace("(", "")
+                #         .replace(")", "")
+                #     )
 
                 station_data[field] = escape(field_value)
             except:
@@ -219,10 +264,13 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
 
         # Remove duplicate keywords - mostly to account for duplicates added by repetitive GCMD entries
         for keyword_field in sanitize_fields:
-            keywords = [
-                keyword.strip() for keyword in station_data[keyword_field].split(",")
-            ]
-            station_data[keyword_field] = ",".join(set(keywords))
+            try:
+                keywords = [
+                    keyword.strip() for keyword in station_data[keyword_field].split(",")
+                ]
+                station_data[keyword_field] = ",".join(set(keywords))
+            except KeyError:
+                station_data[keyword_field] = None
 
         return_value = station_data
 
@@ -247,7 +295,7 @@ def erddap_meta(metadata, attribute_name, row_type="attribute", var_name="NC_GLO
         ]["Data Type"].values[0]
     except IndexError:
         message = (
-            "IndexError extracting ERDDAP Metadata: attribute: %s, row_type: %s, var_name: %s"
+            "IndexError (Not found?) extracting ERDDAP Metadata: attribute: %s, row_type: %s, var_name: %s"
             % (attribute_name, row_type, var_name)
         )
         dtp_logger.debug(message)

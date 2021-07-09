@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "..\\metadata-xml"
+		}
+	],
+	"settings": {
+		"python.pythonPath": "c:\\users\\scott.callisto\\appdata\\local\\programs\\python\\python39\\python.exe"
+	}
+}

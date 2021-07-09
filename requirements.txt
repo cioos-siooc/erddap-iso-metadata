@@ -8,4 +8,5 @@ PyYAML==5.1.2
 pyyaml-include==1.1.1.1
 requests>=2.22.0
 urllib3>=1.25.3
+validators
 git+git://github.com/cioos-siooc/metadata-xml.git
