@@ -193,17 +193,78 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             ]
 
         station_data["metadata"]["identifier"] = erddap_meta(metadata, "uuid")["value"]
+        station_data["metadata"]["comment"] = erddap_meta(metadata, "comment")["value"]
+        station_data["metadata"]["history"] = erddap_meta(metadata, "history")["value"]
 
         station_data["identification"]["title"]["en"] = erddap_meta(metadata, "title")["value"]
         station_data["identification"]["title"]["fr"] = erddap_meta(metadata, "title_fra")["value"]
         station_data["identification"]["abstract"]["en"] = erddap_meta(metadata, "summary")["value"]
         station_data["identification"]["abstract"]["fr"] = erddap_meta(metadata, "summary_fra")["value"]
 
-        station_data["identification"]["dates"]["creation"] = erddap_meta(metadata, "summary")["value"]
-        station_data["identification"]["dates"]["publication"] = erddap_meta(metadata, "summary_fra")["value"]
+        station_data["identification"]["dates"]["project"]["en"] = erddap_meta(metadata, "project")["value"]
+        station_data["identification"]["dates"]["project"]["fr"] = erddap_meta(metadata, "project_fra")["value"]
 
+        station_data["identification"]["acknowledgement"] = erddap_meta(metadata, "acknowledgement")["value"]
 
-        # TODO: Contact Fields
+        if erddap_meta(metadata, "date_created")["value"]:
+            station_data["identification"]["dates"]["creation"] = erddap_meta(metadata, "date_created")["value"]
+        else:
+            creation_date = datetime.strptime(erddap_meta(metadata, "time_coverage_start")["value"], "").strftime('%y-%m-%d')
+            station_data["identification"]["dates"]["creation"] = creation_date
+
+        if erddap_meta(metadata, "date_published")["value"]:
+            station_data["identification"]["dates"]["publication"] = erddap_meta(metadata, "date_published")["value"]
+        else:
+            publication_date = datetime.strptime(erddap_meta(metadata, "time_coverage_start")["value"], "").strftime('%y-%m-%d')
+            station_data["identification"]["dates"]["publication"] = publication_date
+
+        # TODO: Contact Fields, expand to include https://wiki.esipfed.org/Attribute_Convention_for_Data_Discovery_1-2
+        # and https://ioos.github.io/ioos-metadata/ioos-metadata-profile-v1-2.html
+
+        # contributor_name, contributor_role
+        contact_template = {
+            "roles": [],
+            "organization": {
+                "name": "",
+                "url": "",
+                "address": "",
+                "city": "",
+                "country": "",
+                "email": "",
+            },
+            "individual": {
+                "name": "",
+                "position": "",
+                "email": "",
+            }
+        }
+
+        contributor = copy.deepcopy(contact_template)
+
+        contributor["roles"].append("contributor")
+        contributor["organization"]["name"] = erddap_meta(metadata, "contributor_name")["value"]
+        station_data["contact"].append(contributor)
+
+        creator = copy.deepcopy(contact_template)
+
+        creator["roles"].append("creator")
+        if erddap_meta(metadata, "creator_type")["value"] == "institution":
+            creator["organization"]["name"] = erddap_meta(metadata, "creator_name")["value"]
+            creator["organization"]["email"] = erddap_meta(metadata, "creator_email")["value"]
+            creator["organization"]["url"] = erddap_meta(metadata, "creator_url")["value"]
+
+        station_data["contact"].append(creator)
+
+        # publisher_institution, publisher_type, 
+        publisher = copy.deepcopy(contact_template)
+
+        publisher["roles"].append("creator")
+        publisher["organization"]["name"] = erddap_meta(metadata, "publisher_name")["value"]
+        publisher["organization"]["email"] = erddap_meta(metadata, "publisher_email")["value"]
+        publisher["organization"]["country"] = erddap_meta(metadata, "publisher_country")["value"]
+        publisher["organization"]["url"] = erddap_meta(metadata, "publisher_url")["value"]
+
+        station_data["contact"].append(publisher)
 
 
         # ERDDAP ISO XML provides a list of dataset field names (long & short), data types & units
@@ -285,14 +346,9 @@ def erddap_meta(metadata, attribute_name, row_type="attribute", var_name="NC_GLO
     return_value = {"value": None, "type": None}
 
     try:
-        return_value["value"] = metadata[
-            (metadata["Variable Name"] == var_name)
-            & (metadata["Attribute Name"] == attribute_name)
-        ]["Value"].values[0]
-        return_value["type"] = metadata[
-            (metadata["Variable Name"] == var_name)
-            & (metadata["Attribute Name"] == attribute_name)
-        ]["Data Type"].values[0]
+        return_value["value"] = metadata[(metadata["Variable Name"] == var_name) & (metadata["Attribute Name"] == attribute_name)]["Value"].values[0]
+
+        return_value["type"] = metadata[(metadata["Variable Name"] == var_name) & (metadata["Attribute Name"] == attribute_name)]["Data Type"].values[0]
     except IndexError:
         message = (
             "IndexError (Not found?) extracting ERDDAP Metadata: attribute: %s, row_type: %s, var_name: %s"
