@@ -8,6 +8,7 @@ import re
 import ssl
 import subprocess
 from datetime import datetime
+from typing import Type
 from xml.sax.saxutils import escape  # use defusedxml instead
 import validators
 
@@ -201,21 +202,29 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
         station_data["identification"]["abstract"]["en"] = erddap_meta(metadata, "summary")["value"]
         station_data["identification"]["abstract"]["fr"] = erddap_meta(metadata, "summary_fra")["value"]
 
-        station_data["identification"]["dates"]["project"]["en"] = erddap_meta(metadata, "project")["value"]
-        station_data["identification"]["dates"]["project"]["fr"] = erddap_meta(metadata, "project_fra")["value"]
+        station_data["identification"]["project"]["en"] = erddap_meta(metadata, "project")["value"]
+        station_data["identification"]["project"]["fr"] = erddap_meta(metadata, "project_fra")["value"]
 
         station_data["identification"]["acknowledgement"] = erddap_meta(metadata, "acknowledgement")["value"]
 
         if erddap_meta(metadata, "date_created")["value"]:
             station_data["identification"]["dates"]["creation"] = erddap_meta(metadata, "date_created")["value"]
         else:
-            creation_date = datetime.strptime(erddap_meta(metadata, "time_coverage_start")["value"], "").strftime('%y-%m-%d')
+            try:
+                creation_date = datetime.strptime(erddap_meta(metadata, "time_coverage_start")["value"], '%Y-%m-%dT%H:%M:%S%z').strftime('%y-%m-%d')
+            except TypeError:
+                creation_date = None
+
             station_data["identification"]["dates"]["creation"] = creation_date
 
         if erddap_meta(metadata, "date_published")["value"]:
             station_data["identification"]["dates"]["publication"] = erddap_meta(metadata, "date_published")["value"]
         else:
-            publication_date = datetime.strptime(erddap_meta(metadata, "time_coverage_start")["value"], "").strftime('%y-%m-%d')
+            try:
+                publication_date = datetime.strptime(erddap_meta(metadata, "time_coverage_start")["value"], '%Y-%m-%dT%H:%M:%S%z').strftime('%y-%m-%d')
+            except TypeError:
+                publication_date = None
+                
             station_data["identification"]["dates"]["publication"] = publication_date
 
         # TODO: Contact Fields, expand to include https://wiki.esipfed.org/Attribute_Convention_for_Data_Discovery_1-2
@@ -238,27 +247,73 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
                 "email": "",
             }
         }
+        
+        # automate the creation and population of these fields using these two lists
+        contact_roles = [
+            "contributor", 
+            "creator", 
+            "publisher"
+        ]
+        contact_suffixes = [
+            "_name", 
+            "_email", 
+            "_url", 
+            "_address", 
+            "_city", 
+            "_country", 
+            "_person_name", 
+            "_person_email", 
+            "_position", 
+            "_organization"
+        ]
 
         contributor = copy.deepcopy(contact_template)
 
         contributor["roles"].append("contributor")
         contributor["organization"]["name"] = erddap_meta(metadata, "contributor_name")["value"]
+        contributor["organization"]["email"] = erddap_meta(metadata, "contributor_email")["value"]
+        contributor["organization"]["url"] = erddap_meta(metadata, "contributor_url")["value"]
         station_data["contact"].append(contributor)
 
         creator = copy.deepcopy(contact_template)
 
+        # added keys:
+        # - creator_person_name, 
+        # - creator_person_email, 
+        # - creator_position, 
+        # - creator_organization
         creator["roles"].append("creator")
-        if erddap_meta(metadata, "creator_type")["value"] == "institution":
+        creator_type = str(erddap_meta(metadata, "creator_type")["value"])
+
+        if any(role in creator_type for role in ["institution", "group"]):
             creator["organization"]["name"] = erddap_meta(metadata, "creator_name")["value"]
             creator["organization"]["email"] = erddap_meta(metadata, "creator_email")["value"]
             creator["organization"]["url"] = erddap_meta(metadata, "creator_url")["value"]
+            creator["organization"]["address"] = erddap_meta(metadata, "creator_address")["value"]
+            creator["organization"]["city"] = erddap_meta(metadata, "creator_city")["value"]
+            creator["organization"]["country"] = erddap_meta(metadata, "creator_country")["value"]
+            
+            creator["individual"]["name"] = erddap_meta(metadata, "creator_person_name")["value"]
+            creator["individual"]["email"] = erddap_meta(metadata, "creator_person_email")["value"]
+            creator["individual"]["position"] = erddap_meta(metadata, "creator_position")["value"]
+        elif any(role in creator_type for role in ["person", "position"]):
+            creator["individual"]["name"] = erddap_meta(metadata, "creator_name")["value"]
+            creator["individual"]["email"] = erddap_meta(metadata, "creator_email")["value"]
+            creator["individual"]["position"] = erddap_meta(metadata, "creator_position")["value"]
+
+            creator["organization"]["name"] = erddap_meta(metadata, "creator_organization")["value"]
+            creator["organization"]["url"] = erddap_meta(metadata, "creator_url")["value"]
+            creator["organization"]["address"] = erddap_meta(metadata, "creator_address")["value"]
+            creator["organization"]["city"] = erddap_meta(metadata, "creator_city")["value"]
+            creator["organization"]["country"] = erddap_meta(metadata, "creator_country")["value"]
+
 
         station_data["contact"].append(creator)
 
         # publisher_institution, publisher_type, 
         publisher = copy.deepcopy(contact_template)
 
-        publisher["roles"].append("creator")
+        publisher["roles"].append("publisher")
         publisher["organization"]["name"] = erddap_meta(metadata, "publisher_name")["value"]
         publisher["organization"]["email"] = erddap_meta(metadata, "publisher_email")["value"]
         publisher["organization"]["country"] = erddap_meta(metadata, "publisher_country")["value"]
