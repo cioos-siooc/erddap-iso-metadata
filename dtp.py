@@ -8,6 +8,7 @@ import re
 import ssl
 import subprocess
 from datetime import datetime
+import isodate
 from typing import Type
 from xml.sax.saxutils import escape  # use defusedxml instead
 import validators
@@ -18,6 +19,8 @@ import yaml
 from erddapy import ERDDAP
 from metadata_xml.template_functions import metadata_to_xml
 from yamlinclude import YamlIncludeConstructor
+
+iso_date_format = '%Y-%m-%dT%H:%M:%S%z'
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
@@ -196,22 +199,54 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
         station_data["metadata"]["identifier"] = erddap_meta(metadata, "uuid")["value"]
         station_data["metadata"]["comment"] = erddap_meta(metadata, "comment")["value"]
         station_data["metadata"]["history"] = erddap_meta(metadata, "history")["value"]
+        station_data["metadata"]["use_constraints"] = erddap_meta(metadata, "use_constraints")["value"]
 
         station_data["identification"]["title"]["en"] = erddap_meta(metadata, "title")["value"]
         station_data["identification"]["title"]["fr"] = erddap_meta(metadata, "title_fra")["value"]
+
         station_data["identification"]["abstract"]["en"] = erddap_meta(metadata, "summary")["value"]
         station_data["identification"]["abstract"]["fr"] = erddap_meta(metadata, "summary_fra")["value"]
 
         station_data["identification"]["project"]["en"] = erddap_meta(metadata, "project")["value"]
         station_data["identification"]["project"]["fr"] = erddap_meta(metadata, "project_fra")["value"]
 
+        station_data["identification"]["keywords"]["default"]["en"] = erddap_meta(metadata, "keywords")["value"]
+        station_data["identification"]["keywords"]["default"]["fr"] = erddap_meta(metadata, "keywords_fra")["value"]
+
+        station_data["identification"]["keywords"]["eov"]["en"] = erddap_meta(metadata, "cioos_eov")["value"]
+        station_data["identification"]["keywords"]["eov"]["fr"] = erddap_meta(metadata, "cioos_eov_fra")["value"]
+
         station_data["identification"]["acknowledgement"] = erddap_meta(metadata, "acknowledgement")["value"]
+        station_data["identification"]["progress_code"] = erddap_meta(metadata, "progress_code")["value"]
+
+        station_data["identification"]["status"] = erddap_meta(metadata, "status")["value"]
+        station_data["identification"]["temporal_begin"] = erddap_meta(metadata, "time_coverage_start")["value"]
+        station_data["identification"]["temporal_end"] = erddap_meta(metadata, "time_coverage_end")["value"]
+
+        # calculate from temporal begin/end, duration format
+        try:
+            duration_begin = datetime.strptime(station_data["identification"]["temporal_begin"], iso_date_format)
+        except TypeError:
+            duration_begin = None
+
+        try:
+            duration_end = datetime.strptime(station_data["identification"]["temporal_end"], iso_date_format)
+        except TypeError:
+            duration_end = None
+        
+        try:
+            station_data["identification"]["temporal_duration"] = isodate.duration_isoformat(duration_end - duration_begin)
+        except TypeError:
+            station_data["identification"]["temporal_duration"] = None
+
+        station_data["identification"]["time_coverage_resolution"] = erddap_meta(metadata, "time_coverage_resolution")["value"]
+
 
         if erddap_meta(metadata, "date_created")["value"]:
             station_data["identification"]["dates"]["creation"] = erddap_meta(metadata, "date_created")["value"]
         else:
             try:
-                creation_date = datetime.strptime(erddap_meta(metadata, "time_coverage_start")["value"], '%Y-%m-%dT%H:%M:%S%z').strftime('%y-%m-%d')
+                creation_date = datetime.strptime(erddap_meta(metadata, "time_coverage_start")["value"], iso_date_format).strftime('%y-%m-%d')
             except TypeError:
                 creation_date = None
 
@@ -221,7 +256,7 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             station_data["identification"]["dates"]["publication"] = erddap_meta(metadata, "date_published")["value"]
         else:
             try:
-                publication_date = datetime.strptime(erddap_meta(metadata, "time_coverage_start")["value"], '%Y-%m-%dT%H:%M:%S%z').strftime('%y-%m-%d')
+                publication_date = datetime.strptime(erddap_meta(metadata, "time_coverage_start")["value"], iso_date_format).strftime('%y-%m-%d')
             except TypeError:
                 publication_date = None
                 
@@ -229,8 +264,6 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
 
         # TODO: Contact Fields, expand to include https://wiki.esipfed.org/Attribute_Convention_for_Data_Discovery_1-2
         # and https://ioos.github.io/ioos-metadata/ioos-metadata-profile-v1-2.html
-
-        # contributor_name, contributor_role
         contact_template = {
             "roles": [],
             "organization": {
@@ -267,7 +300,7 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             
             type_key = erddap_meta(metadata, role + "_type")["value"]
 
-            # if the type is not specified it is assumed to be a person
+            # if the type is not specified, it is assumed to be a person
             if not type_key:
                 type_key = "person"
 
@@ -295,6 +328,32 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
                 contact["individual"]["email"] = erddap_meta(metadata, role + "_person_email")["value"]
                 
             station_data["contact"].append(contact)
+
+
+        # platform & instruments
+        platform_template = {
+            "id": "",
+            "description": {
+                "en": "",
+                "fr": "",
+            },
+            "instruments": []
+        }
+
+        instrument_template = {
+            "id": "",
+            "manufacturer": "",
+            "version": "",
+            "type": {
+                "en": "",
+                "fr": "",
+            },
+            "description": {
+                "en": "",
+                "fr": "",
+            },
+        }
+
 
         # ERDDAP ISO XML provides a list of dataset field names (long & short), data types & units
         # of measurement, in case this becomes useful for the CIOOS metadata standard we can extend
@@ -329,9 +388,7 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             for keyword in config["static_data"]["sanitize_fields"].split(",")
         ]
 
-        for index, field in enumerate(
-            config["static_data"]["opt_rec_variables"].split(",")
-        ):
+        for index, field in enumerate(config["static_data"]["opt_rec_variables"].split(",")):
             field = field.strip()
 
             try:
