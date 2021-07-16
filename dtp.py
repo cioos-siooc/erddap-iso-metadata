@@ -329,13 +329,13 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
                 
             station_data["contact"].append(contact)
 
-
+        
         # platform & instruments
-        platform_template = {
-            "id": "",
+        platform_info = {
+            "id": erddap_meta(metadata, "platform_id")["value"],
             "description": {
-                "en": "",
-                "fr": "",
+                "en": erddap_meta(metadata, "platform_description")["value"],
+                "fr": erddap_meta(metadata, "platform_description_fra")["value"],
             },
             "instruments": []
         }
@@ -354,6 +354,10 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             },
         }
 
+        # add instruments to erddap profiles and fill them in here, similar 
+        # approach to contacts above.
+
+        station_data["platform"] = platform_info
 
         # ERDDAP ISO XML provides a list of dataset field names (long & short), data types & units
         # of measurement, in case this becomes useful for the CIOOS metadata standard we can extend
