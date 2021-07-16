@@ -240,6 +240,7 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
                 "city": "",
                 "country": "",
                 "email": "",
+                "phone": "",
             },
             "individual": {
                 "name": "",
@@ -254,73 +255,46 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             "creator", 
             "publisher"
         ]
-        contact_suffixes = [
-            "_name", 
-            "_email", 
-            "_url", 
-            "_address", 
-            "_city", 
-            "_country", 
-            "_person_name", 
-            "_person_email", 
-            "_position", 
-            "_organization"
-        ]
 
-        contributor = copy.deepcopy(contact_template)
-
-        contributor["roles"].append("contributor")
-        contributor["organization"]["name"] = erddap_meta(metadata, "contributor_name")["value"]
-        contributor["organization"]["email"] = erddap_meta(metadata, "contributor_email")["value"]
-        contributor["organization"]["url"] = erddap_meta(metadata, "contributor_url")["value"]
-        station_data["contact"].append(contributor)
-
-        creator = copy.deepcopy(contact_template)
-
-        # added keys:
-        # - creator_person_name, 
-        # - creator_person_email, 
-        # - creator_position, 
-        # - creator_organization
-        creator["roles"].append("creator")
-        creator_type = str(erddap_meta(metadata, "creator_type")["value"])
-
-        if any(role in creator_type for role in ["institution", "group"]):
-            creator["organization"]["name"] = erddap_meta(metadata, "creator_name")["value"]
-            creator["organization"]["email"] = erddap_meta(metadata, "creator_email")["value"]
-            creator["organization"]["url"] = erddap_meta(metadata, "creator_url")["value"]
-            creator["organization"]["address"] = erddap_meta(metadata, "creator_address")["value"]
-            creator["organization"]["city"] = erddap_meta(metadata, "creator_city")["value"]
-            creator["organization"]["country"] = erddap_meta(metadata, "creator_country")["value"]
+        # added keys for more complete metadata generation:
+        # - *_person_name, 
+        # - *_person_email, 
+        # - *_position, 
+        # - *_institution
+        for role in contact_roles:
+            contact = copy.deepcopy(contact_template)
+            contact["roles"].append(role)
             
-            creator["individual"]["name"] = erddap_meta(metadata, "creator_person_name")["value"]
-            creator["individual"]["email"] = erddap_meta(metadata, "creator_person_email")["value"]
-            creator["individual"]["position"] = erddap_meta(metadata, "creator_position")["value"]
-        elif any(role in creator_type for role in ["person", "position"]):
-            creator["individual"]["name"] = erddap_meta(metadata, "creator_name")["value"]
-            creator["individual"]["email"] = erddap_meta(metadata, "creator_email")["value"]
-            creator["individual"]["position"] = erddap_meta(metadata, "creator_position")["value"]
+            type_key = erddap_meta(metadata, role + "_type")["value"]
 
-            creator["organization"]["name"] = erddap_meta(metadata, "creator_organization")["value"]
-            creator["organization"]["url"] = erddap_meta(metadata, "creator_url")["value"]
-            creator["organization"]["address"] = erddap_meta(metadata, "creator_address")["value"]
-            creator["organization"]["city"] = erddap_meta(metadata, "creator_city")["value"]
-            creator["organization"]["country"] = erddap_meta(metadata, "creator_country")["value"]
+            # if the type is not specified it is assumed to be a person
+            if not type_key:
+                type_key = "person"
 
+            # Common contact information regardless of role
+            contact["organization"]["url"] = erddap_meta(metadata, role + "_url")["value"]
+            contact["organization"]["address"] = erddap_meta(metadata, role + "_address")["value"]
+            contact["organization"]["city"] = erddap_meta(metadata, role + "_city")["value"]
+            contact["organization"]["country"] = erddap_meta(metadata, role + "_country")["value"]
+            contact["organization"]["phone"] = erddap_meta(metadata, role + "_phone")["value"]
 
-        station_data["contact"].append(creator)
+            contact["individual"]["position"] = erddap_meta(metadata, role + "_position")["value"]
 
-        # publisher_institution, publisher_type, 
-        publisher = copy.deepcopy(contact_template)
+            # contact information that shifts due to role and may require additional fields
+            if any(role in type_key for role in ["person", "position"]):
+                contact["individual"]["name"] = erddap_meta(metadata, role + "_name")["value"]
+                contact["individual"]["email"] = erddap_meta(metadata, role + "_email")["value"]
 
-        publisher["roles"].append("publisher")
-        publisher["organization"]["name"] = erddap_meta(metadata, "publisher_name")["value"]
-        publisher["organization"]["email"] = erddap_meta(metadata, "publisher_email")["value"]
-        publisher["organization"]["country"] = erddap_meta(metadata, "publisher_country")["value"]
-        publisher["organization"]["url"] = erddap_meta(metadata, "publisher_url")["value"]
-
-        station_data["contact"].append(publisher)
-
+                contact["organization"]["name"] = erddap_meta(metadata, role + "_institution")["value"]
+            
+            elif any(role in type_key for role in ["institution", "group"]):
+                contact["organization"]["name"] = erddap_meta(metadata, role + "_name")["value"]
+                contact["organization"]["email"] = erddap_meta(metadata, role + "_email")["value"]
+                
+                contact["individual"]["name"] = erddap_meta(metadata, role + "_person_name")["value"]
+                contact["individual"]["email"] = erddap_meta(metadata, role + "_person_email")["value"]
+                
+            station_data["contact"].append(contact)
 
         # ERDDAP ISO XML provides a list of dataset field names (long & short), data types & units
         # of measurement, in case this becomes useful for the CIOOS metadata standard we can extend
