@@ -177,6 +177,9 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
         )
         metadata = pd.read_csv(filepath_or_buffer=metadata_url)
 
+        print(metadata.info())
+        print(metadata)
+
         # if a depth min / max exists use those
         if erddap_meta(metadata, "depth_min")["value"] and erddap_meta(metadata, "depth_max")["value"]:
             station_data["spatial"]["vertical"] = [
@@ -331,6 +334,14 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
 
         
         # platform & instruments
+        # platform_id *
+        # platform_description *
+        # platform_description_fra *
+        # platform_description_eng *
+        # 
+        # NOTE: both languages need not be specified, platform_description 
+        #       defaults to primary language, the secondary is automaticlly 
+        #       assumed to be the other
         platform_info = {
             "id": erddap_meta(metadata, "platform_id")["value"],
             "description": {
@@ -340,6 +351,18 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
             "instruments": []
         }
 
+        # New Keys (GLOBAL):
+        # instrument_x_id *
+        # instrument_x_manufacturer
+        # instrument_x_version
+        # instrument_x_type
+        # instrument_x_type_fra
+        # instrument_x_type_eng
+        # instrument_x_description
+        # instrument_x_description_fra
+        # instrument_x_description_eng
+        #
+        # NOTE: Only instrument id is required
         instrument_template = {
             "id": "",
             "manufacturer": "",
@@ -356,6 +379,14 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
 
         # add instruments to erddap profiles and fill them in here, similar 
         # approach to contacts above.
+
+        # create subset of instrument metadata, use regex to split and identify 
+        # instrument id and then iterate through possible fields, mapping them 
+        # to corresponding YAML fields.
+        instruments =  metadata[metadata["Attribute Name"].str.contains("^instrument_", na=False, regex=True)]
+        if not instruments.empty:
+            # TODO: iterate through instruments
+            pass
 
         station_data["platform"] = platform_info
 
