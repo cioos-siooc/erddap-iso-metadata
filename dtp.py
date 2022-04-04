@@ -3,16 +3,11 @@ import configparser
 import copy
 import importlib
 import logging
-import os
-import re
 import ssl
-import subprocess
-from datetime import datetime
 import isodate
-from typing import Type
 from xml.sax.saxutils import escape  # use defusedxml instead
 import validators
-
+from pathlib import Path
 import pandas as pd
 import pytz
 import yaml
@@ -510,6 +505,12 @@ def output_yaml_source(dtp_config, pygm_yaml):
         dtp_logger.info("Dumping YAML for %s profile" % (station_profile))
 
         file_name = "%s/%s.yml" % (dtp_config["output"]["target_dir"], station_profile)
+
+        output_path = Path(file_name)
+
+        # If destination directory doesn't exist, create it
+        if not output_path.parent.exists():
+            Path.mkdir(output_path.parent, parents=True)
 
         try:
             yaml_output = yaml.dump(pygm_yaml["erddap"][station_profile])
