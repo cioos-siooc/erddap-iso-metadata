@@ -41,16 +41,12 @@ def main(prog_args):
     data_source = load_data_source(dtp_config, dtp_driver)
     # print(list(data_source))
 
-    print("transform_data_source...")
-    pygm_source = transform_data_source(dtp_config, data_source)
+    print("filtering null values...")
+    filtered_data = stripper(data_source)
     # print(pygm_source)
 
-    print("translate_into_yaml...")
-    pygm_yaml = translate_into_yaml(dtp_config, pygm_source)
-    # print(pygm_yaml)
-
     print("output_yaml_source...")
-    final_result = output_yaml_source(dtp_config, pygm_yaml)
+    final_result = output_yaml_source(dtp_config, filtered_data)
     # print(pygm_yaml)
 
 
@@ -459,13 +455,17 @@ def erddap_meta(metadata, attribute_name, row_type="attribute", var_name="NC_GLO
 
     return return_value
 
+# https://stackoverflow.com/a/33529384/2112410
+def stripper(data):
+    new_data = {}
+    for key, value in data.items():
+        if isinstance(value, dict):
+            value = stripper(value)
 
-# transforms data from data source into python objects ready for pyYaml -> pyGeometa
-def transform_data_source(config, data_source):
-    pygm_source = data_source
+        if not value in (u'', None, {}):
+            new_data[key] = value
 
-    return pygm_source
-
+    return new_data
 
 # translate python object to pyYaml output
 def translate_into_yaml(dtp_config, pygm_source):
@@ -474,18 +474,19 @@ def translate_into_yaml(dtp_config, pygm_source):
     return pygm_yaml
 
 
-def output_yaml_source(dtp_config, pygm_yaml):
+def output_yaml_source(dtp_config, filtered_data):
     output = []
 
     # TODO: use new config output settings and map to metadata-xml genereator
-    for index_label, station_profile in enumerate(pygm_yaml["erddap"]):
+    for index_label, station_profile in enumerate(filtered_data["erddap"]):
         dtp_logger.info("Dumping YAML for %s profile" % (station_profile))
 
-        file_name = "%s/%s.yml" % (dtp_config["output"]["target_dir"], station_profile)
+        yaml_file_name = "%s/%s.yml" % (dtp_config["output"]["target_dir"], station_profile)
+        xml_file_name = "%s/%s.xml" % (dtp_config["output"]["target_dir"], station_profile)
 
-        output_path = Path(file_name)
+        output_path = Path(yaml_file_name)
 
-        station_data = pygm_yaml["erddap"][station_profile]
+        station_data = filtered_data["erddap"][station_profile]
 
         # If destination directory doesn't exist, create it
         if not output_path.parent.exists():
@@ -494,10 +495,12 @@ def output_yaml_source(dtp_config, pygm_yaml):
         yaml_output = yaml.dump(station_data)
 
         output.append(yaml_output)
-        with open(file_name, "w") as file_writer:
+        with open(yaml_file_name, "w") as file_writer:
             file_writer.write(yaml_output)
 
         xml_output = metadata_to_xml(station_data)
+        with open(xml_file_name, "w") as file_writer:
+            file_writer.write(xml_output)
 
     return output
 
