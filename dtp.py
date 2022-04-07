@@ -483,7 +483,7 @@ def output_yaml_source(dtp_config, filtered_data):
         if not output_path.parent.exists():
             Path.mkdir(output_path.parent, parents=True)
 
-        yaml_output = yaml.dump(station_data)
+        yaml_output = yaml.dump(data=station_data, sort_keys=False)
 
         output.append(yaml_output)
         with open(yaml_file_name, "w", encoding="UTF-8") as file_writer:
