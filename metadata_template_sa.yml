@@ -1,12 +1,3 @@
-# Most text fields can be either bilingual or not, eg either is valid:
-#
-#   comment: just in the main language
-#
-#   comment:
-#      en: in english
-#      fr: in french
-#
-
 metadata:
   naming_authority:
     en: ca.smartatlantic

@@ -5,7 +5,8 @@ import importlib
 import logging
 import ssl
 import isodate
-from xml.sax.saxutils import escape  # use defusedxml instead
+from xml.sax.saxutils import escape
+from numpy import empty  # use defusedxml instead
 import validators
 from pathlib import Path
 import pandas as pd
@@ -76,6 +77,31 @@ def load_data_source(config, driver):
     print("Loading baseline station data from ERDDAP...")
     data["erddap"] = load_data_from_erddap(config)
 
+    include_list = [
+        dataset.strip() for dataset in config["datasets"]["include"].split(",")
+    ]
+    exclude_list = [
+        dataset.strip() for dataset in config["datasets"]["exclude"].split(",")
+    ]
+
+    if len(include_list) > 0:
+        filtered_dataset_list = {}
+        for dataset_id in include_list:
+            filtered_dataset_list[dataset_id] = data["erddap"][dataset_id]
+
+        data["erddap"] = filtered_dataset_list
+
+    if len(exclude_list) > 0:
+        for dataset_id in exclude_list:
+            try:
+                print("Removing '%s'" % (dataset_id))
+                data["erddap"][dataset_id].pop()
+            except KeyError:
+                print("'%s' not found.  Skipping." % (dataset_id))
+
+    print("Filtered List of Datasets:")
+    print(data["erddap"].keys())
+
     for index_label, station_profile in enumerate(data["erddap"]):
         print("Loading Individual Profile: %s" % (station_profile))
         data["erddap"][station_profile] = load_data_from_erddap(
@@ -99,12 +125,20 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
         # load all station data MCF skeleton
         mcf_template = yaml.safe_load(open(config["static_data"]["mcf_template"], "r"))
 
-        return_value = fetch_general_dataset_info(erddap_server=es, mcf_template=mcf_template)
+        return_value = fetch_general_dataset_info(
+            erddap_server=es, mcf_template=mcf_template
+        )
 
     else:
-        return_value = fetch_detailed_dataset_info(erddap_server=es, config=config, station_id=station_id, station_data=station_data)
+        return_value = fetch_detailed_dataset_info(
+            erddap_server=es,
+            config=config,
+            station_id=station_id,
+            station_data=station_data,
+        )
 
     return return_value
+
 
 def fetch_general_dataset_info(erddap_server, mcf_template):
     stations = {}
@@ -132,18 +166,22 @@ def fetch_general_dataset_info(erddap_server, mcf_template):
         sources = 0
         stations[id]["distribution"][sources]["name"] = "ERDDAP Data Subset Form"
         stations[id]["distribution"][sources]["url"] = escape(dataset_url)
-        stations[id]["distribution"][sources]["description"]["en"] = "ERDDAP's version of the OPeNDAP .html web page for this dataset. Specify a subset of the dataset and download the data via OPeNDAP or in many different file types."
-        stations[id]["distribution"][sources]["description"]["fr"] = "Version d'ERDDAP de la page Web OpenDAP .html pour ce jeu de données. Spécifiez un sous-ensemble du jeu de données et téléchargez les données via OpenDap ou dans de nombreux types de fichiers différents."
-        
+        stations[id]["distribution"][sources]["description"][
+            "en"
+        ] = "ERDDAP's version of the OPeNDAP .html web page for this dataset. Specify a subset of the dataset and download the data via OPeNDAP or in many different file types."
+        stations[id]["distribution"][sources]["description"][
+            "fr"
+        ] = "Version d'ERDDAP de la page Web OpenDAP .html pour ce jeu de données. Spécifiez un sous-ensemble du jeu de données et téléchargez les données via OpenDap ou dans de nombreux types de fichiers différents."
+
         if validators.url(row_series["infoUrl"]):
             sources = sources + 1
-            stations[id]["distribution"].append({"url":"", "name":""})
+            stations[id]["distribution"].append({"url": "", "name": ""})
             stations[id]["distribution"][sources]["url"] = row_series["infoUrl"]
             stations[id]["distribution"][sources]["name"] = "Information about dataset"
 
         if validators.url(row_series["sourceUrl"]):
             sources = sources + 1
-            stations[id]["distribution"].append({"url":"", "name":""})
+            stations[id]["distribution"].append({"url": "", "name": ""})
             stations[id]["distribution"][sources]["url"] = row_series["sourceUrl"]
             stations[id]["distribution"][sources]["name"] = "Original source of data"
 
@@ -157,13 +195,18 @@ def fetch_general_dataset_info(erddap_server, mcf_template):
 
         # If date_published exists use that date, otherwise default to minTime (UTC)
         if row_series.get("date_published"):
-            stations[id]["metadata"]["dates"]["publication"] = row_series["date_published"]
+            stations[id]["metadata"]["dates"]["publication"] = row_series[
+                "date_published"
+            ]
         else:
-            stations[id]["metadata"]["dates"]["publication"] = row_series["minTime (UTC)"]
+            stations[id]["metadata"]["dates"]["publication"] = row_series[
+                "minTime (UTC)"
+            ]
 
         stations[id]["metadata"]["dates"]["revision"] = row_series.get("date_revised")
 
     return stations
+
 
 def fetch_detailed_dataset_info(erddap_server, config, station_id, station_data):
     # load specific station data into MCF skeleton
@@ -178,9 +221,6 @@ def fetch_detailed_dataset_info(erddap_server, config, station_id, station_data)
     )
     metadata = pd.read_csv(filepath_or_buffer=metadata_url)
 
-    print(metadata.info())
-    print(metadata)
-
     # if a depth min / max exists use those
     if erddap_meta(metadata, "depth_min")["value"] and erddap_meta(metadata, "depth_max")["value"]:
         station_data["spatial"]["vertical"] = [
@@ -193,7 +233,7 @@ def fetch_detailed_dataset_info(erddap_server, config, station_id, station_data)
             erddap_meta(metadata, "depth")["value"],
             erddap_meta(metadata, "depth")["value"],
         ]
-    # invert altitude to be negative to match EPSG::5831 
+    # invert altitude to be negative to match EPSG::5831
     elif erddap_meta(metadata, "altitude")["value"]:
         station_data["spatial"]["vertical"] = [
             erddap_meta(metadata, "altitude")["value"] * -1,
@@ -229,15 +269,19 @@ def fetch_detailed_dataset_info(erddap_server, config, station_id, station_data)
 
     # calculate from temporal begin/end, duration format
     try:
-        duration_begin = isodate.parse_datetime(station_data["identification"]["temporal_begin"])
+        duration_begin = isodate.parse_datetime(
+            station_data["identification"]["temporal_begin"]
+        )
     except (TypeError, AttributeError):
         duration_begin = None
 
     try:
-        duration_end = isodate.parse_datetime(station_data["identification"]["temporal_end"])
+        duration_end = isodate.parse_datetime(
+            station_data["identification"]["temporal_end"]
+        )
     except (TypeError, AttributeError):
         duration_end = None
-    
+
     try:
         station_data["identification"]["temporal_duration"] = isodate.duration_isoformat(duration_end - duration_begin)
     except (TypeError, AttributeError):
@@ -245,17 +289,21 @@ def fetch_detailed_dataset_info(erddap_server, config, station_id, station_data)
 
     station_data["identification"]["time_coverage_resolution"] = erddap_meta(metadata, "time_coverage_resolution")["value"]
 
-
+    # Date Created
     if erddap_meta(metadata, "date_created")["value"]:
+        station_data["metadata"]["dates"]["creation"] = erddap_meta(metadata, "date_created")["value"]
         station_data["identification"]["dates"]["creation"] = erddap_meta(metadata, "date_created")["value"]
     else:
         try:
-            creation_date = isodate.parse_datetime(erddap_meta(metadata, "time_coverage_start")["value"]).strftime('%Y-%m-%d')
+            creation_date = isodate.parse_datetime(erddap_meta(metadata, "time_coverage_start")["value"]).strftime("%Y-%m-%d")
         except (TypeError, AttributeError):
             creation_date = None
 
+        station_data["metadata"]["dates"]["creation"] = creation_date
         station_data["identification"]["dates"]["creation"] = creation_date
 
+
+    # Date Published
     if erddap_meta(metadata, "date_published")["value"]:
         station_data["identification"]["dates"]["publication"] = erddap_meta(metadata, "date_published")["value"]
     else:
@@ -263,7 +311,7 @@ def fetch_detailed_dataset_info(erddap_server, config, station_id, station_data)
             publication_date = isodate.parse_datetime(erddap_meta(metadata, "time_coverage_start")["value"]).strftime('%Y-%m-%d')
         except (TypeError, AttributeError):
             publication_date = None
-            
+
         station_data["identification"]["dates"]["publication"] = publication_date
 
     # TODO: Contact Fields, expand to include https://wiki.esipfed.org/Attribute_Convention_for_Data_Discovery_1-2
@@ -283,25 +331,21 @@ def fetch_detailed_dataset_info(erddap_server, config, station_id, station_data)
             "name": "",
             "position": "",
             "email": "",
-        }
+        },
     }
-    
+
     # automate the creation and population of these fields using these two lists
-    contact_roles = [
-        "contributor", 
-        "creator", 
-        "publisher"
-    ]
+    contact_roles = ["contributor", "creator", "publisher"]
 
     # added keys for more complete metadata generation:
-    # - *_person_name, 
-    # - *_person_email, 
-    # - *_position, 
+    # - *_person_name,
+    # - *_person_email,
+    # - *_position,
     # - *_institution
     for role in contact_roles:
         contact = copy.deepcopy(contact_template)
         contact["roles"].append(role)
-        
+
         type_key = erddap_meta(metadata, role + "_type")["value"]
 
         # if the type is not specified, it is assumed to be a person
@@ -333,15 +377,14 @@ def fetch_detailed_dataset_info(erddap_server, config, station_id, station_data)
             
         station_data["contact"].append(contact)
 
-    
     # platform & instruments
     # platform_id *
     # platform_description *
     # platform_description_fra *
     # platform_description_eng *
-    # 
-    # NOTE: both languages need not be specified, platform_description 
-    #       defaults to primary language, the secondary is automaticlly 
+    #
+    # NOTE: both languages need not be specified, platform_description
+    #       defaults to primary language, the secondary is automaticlly
     #       assumed to be the other
     platform_info = {
         "id": erddap_meta(metadata, "platform_id")["value"],
@@ -349,7 +392,7 @@ def fetch_detailed_dataset_info(erddap_server, config, station_id, station_data)
             "en": erddap_meta(metadata, "platform_description")["value"],
             "fr": erddap_meta(metadata, "platform_description_fra")["value"],
         },
-        "instruments": []
+        "instruments": [],
     }
 
     # New Keys (GLOBAL):
@@ -378,84 +421,23 @@ def fetch_detailed_dataset_info(erddap_server, config, station_id, station_data)
         },
     }
 
-    # add instruments to erddap profiles and fill them in here, similar 
+    # add instruments to erddap profiles and fill them in here, similar
     # approach to contacts above.
 
-    # create subset of instrument metadata, use regex to split and identify 
-    # instrument id and then iterate through possible fields, mapping them 
+    # create subset of instrument metadata, use regex to split and identify
+    # instrument id and then iterate through possible fields, mapping them
     # to corresponding YAML fields.
-    instruments =  metadata[metadata["Attribute Name"].str.contains("^instrument_", na=False, regex=True)]
+    instruments = metadata[
+        metadata["Attribute Name"].str.contains("^instrument_", na=False, regex=True)
+    ]
     if not instruments.empty:
         # TODO: iterate through instruments
         pass
 
     station_data["platform"] = platform_info
 
-    # ERDDAP ISO XML provides a list of dataset field names (long & short), data types & units
-    # of measurement, in case this becomes useful for the CIOOS metadata standard we can extend
-    # the YAML skeleton to include these and the template to export them.
-    #
-    # below most varible attributes from ERDDAP are extracted and pivoted to describe the field
-    # actual field data types are extracted seperately and merged into the pivoted dataframe
-    # for completeness
-    # columns_pivot = metadata[
-    #         (metadata["Variable Name"] != "NC_GLOBAL") & 
-    #         (metadata["Row Type"] != "variable")
-    #     ].pivot(index="Variable Name", columns="Attribute Name", values="Value")
-
-    # col_data_types = metadata[(metadata["Row Type"] == "variable")][
-    #     ["Variable Name", "Data Type"]
-    # ]
-
-    # df_merge = pd.merge(columns_pivot, col_data_types, on="Variable Name")
-
-    # station_data["dataset"] = {}
-
-    # TODO: UPDATE TO USE variable_1_x_blah notation
-    # for index_label, field_series in df_merge.iterrows():
-    #     field_name = field_series["Variable Name"]
-    #     station_data["dataset"][field_name] = {}
-    #     station_data["dataset"][field_name]["long_name"] = field_series["long_name"]
-    #     station_data["dataset"][field_name]["data_type"] = field_series["Data Type"]
-    #     station_data["dataset"][field_name]["units"] = field_series["units"]
-
-    sanitize_fields = [
-        keyword.strip()
-        for keyword in config["static_data"]["sanitize_fields"].split(",")
-    ]
-
-    for index, field in enumerate(config["static_data"]["opt_rec_variables"].split(",")):
-        field = field.strip()
-
-        try:
-            field_value = erddap_meta(metadata, field)["value"]
-
-            # if field in sanitize_fields:
-            #     field_value = (
-            #         field_value.replace(" > ", " &gt; ")
-            #         .replace("/", "-")
-            #         .replace("(", "")
-            #         .replace(")", "")
-            #     )
-
-            station_data[field] = escape(field_value)
-        except:
-            dtp_logger.info(
-                "Field: %s in dataset %s not found in NC_GLOBAL.  Value: %s"
-                % (field, station_id, field_value)
-            )
-
-    # Remove duplicate keywords - mostly to account for duplicates added by repetitive GCMD entries
-    for keyword_field in sanitize_fields:
-        try:
-            keywords = [
-                keyword.strip() for keyword in station_data[keyword_field].split(",")
-            ]
-            station_data[keyword_field] = ",".join(set(keywords))
-        except KeyError:
-            station_data[keyword_field] = None
-
     return station_data
+
 
 # Extracts data from the erddap metadata Pandas dataframe, NC_GLOBAL and
 # row type attribute are assumed as defaults for variable specific values
@@ -466,19 +448,14 @@ def erddap_meta(metadata, attribute_name, row_type="attribute", var_name="NC_GLO
 
     try:
         return_value["value"] = metadata[(metadata["Variable Name"] == var_name) & (metadata["Attribute Name"] == attribute_name)]["Value"].values[0]
-
         return_value["type"] = metadata[(metadata["Variable Name"] == var_name) & (metadata["Attribute Name"] == attribute_name)]["Data Type"].values[0]
+
     except IndexError:
         message = (
             "IndexError (Not found?) extracting ERDDAP Metadata: attribute: %s, row_type: %s, var_name: %s"
             % (attribute_name, row_type, var_name)
         )
         dtp_logger.debug(message)
-
-        # print(message)
-        # print(metadata[(metadata['Variable Name']==var_name) & (metadata['Attribute Name']==attribute_name)]['Value'])
-        # print(metadata[(metadata['Variable Name']==var_name) & (metadata['Attribute Name']==attribute_name)]['Data Type'])
-        # print(metadata)
 
     return return_value
 
@@ -508,24 +485,19 @@ def output_yaml_source(dtp_config, pygm_yaml):
 
         output_path = Path(file_name)
 
+        station_data = pygm_yaml["erddap"][station_profile]
+
         # If destination directory doesn't exist, create it
         if not output_path.parent.exists():
             Path.mkdir(output_path.parent, parents=True)
 
-        try:
-            yaml_output = yaml.dump(pygm_yaml["erddap"][station_profile])
+        yaml_output = yaml.dump(station_data)
 
-            output.append(yaml_output)
-            with open(file_name, "w") as file_writer:
-                file_writer.write(yaml_output)
+        output.append(yaml_output)
+        with open(file_name, "w") as file_writer:
+            file_writer.write(yaml_output)
 
-        except Exception as ex:
-            dtp_logger.exception(
-                "Yaml output failed for station: %s" % (station_profile), exc_info=ex
-            )
-            dtp_logger.debug(
-                "Dumping Station YAML: %s" % (pygm_yaml["erddap"][station_profile])
-            )
+        xml_output = metadata_to_xml(station_data)
 
     return output
 
