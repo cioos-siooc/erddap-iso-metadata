@@ -1,13 +1,13 @@
 import argparse
 import configparser
 import copy
-import importlib
 import logging
 import ssl
+import re
 from xml.sax.saxutils import escape
+from pathlib import Path
 import isodate
 import validators
-from pathlib import Path
 import pandas as pd
 import yaml
 from erddapy import ERDDAP
@@ -26,40 +26,25 @@ def main(prog_args):
 
     print("read_config...")
     dtp_config = read_config(prog_args)
-    print(dtp_config)
-
-    print("load_driver...")
-    if dtp_config["driver"]["driver_type"]:
-        dtp_driver = load_driver(dtp_config)
-        print(dtp_driver)
-    else:
-        dtp_driver = None
 
     print("load_data_source...")
-    data_source = load_data_source(dtp_config, dtp_driver)
+    data_source = load_data_source(dtp_config)
 
     print("filtering null values...")
     filtered_data = stripper(data_source)
 
     print("output_yaml_source...")
-    final_result = output_yaml_source(dtp_config, filtered_data)
+    output_yaml_source(dtp_config, filtered_data)
 
 
 # loads configuration data
 def read_config(prog_args):
     config = configparser.ConfigParser()
 
-    print("Using configuration: %s" % (prog_args.config))
+    print(f"Using configuration: {prog_args.config}")
     config.read(prog_args.config)
 
     return config
-
-
-# load data source 'driver'
-def load_driver(config):
-    # not currently being used, will draw on later to merge in SharePoint data
-    driver = importlib.import_module("drivers." + config["driver"]["driver_type"])
-    return driver
 
 def split_and_strip(source_string, delimiter=","):
     try:
@@ -70,8 +55,8 @@ def split_and_strip(source_string, delimiter=","):
     return new_list
 
 
-# loads data from data source via 'driver'
-def load_data_source(config, driver):
+# loads data from data source
+def load_data_source(config):
     data = {}
     print("Loading baseline station data from ERDDAP...")
     data["erddap"] = load_data_from_erddap(config)
@@ -89,16 +74,16 @@ def load_data_source(config, driver):
     if len(exclude_list) > 0:
         for dataset_id in exclude_list:
             try:
-                print("Removing '%s'" % (dataset_id))
+                print(f"Removing '{dataset_id}'")
                 data["erddap"][dataset_id].pop()
             except KeyError:
-                print("'%s' not found.  Skipping." % (dataset_id))
+                print(f"'{dataset_id}' not found.  Skipping.")
 
     print("Filtered List of Datasets:")
     print(data["erddap"].keys())
 
     for index_label, station_profile in enumerate(data["erddap"]):
-        print("Loading Individual Profile: %s" % (station_profile))
+        print("Loading Individual Profile: {station_profile}")
         data["erddap"][station_profile] = load_data_from_erddap(
             config, station_profile, data["erddap"][station_profile]
         )
@@ -118,7 +103,11 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
 
     if station_id is None:
         # load all station data MCF skeleton
-        mcf_template = yaml.safe_load(open(config["static_data"]["mcf_template"], "r"))
+        mcf_template = yaml.safe_load(
+            open(config["static_data"]["mcf_template"], 
+            "r", 
+            encoding="UTF-8")
+        )
 
         return_value = fetch_general_dataset_info(
             erddap_server=erddap_server, mcf_template=mcf_template
@@ -127,7 +116,6 @@ def load_data_from_erddap(config, station_id=None, station_data=None):
     else:
         return_value = fetch_detailed_dataset_info(
             erddap_server=erddap_server,
-            config=config,
             station_id=station_id,
             station_data=station_data,
         )
@@ -203,11 +191,9 @@ def fetch_general_dataset_info(erddap_server, mcf_template):
     return stations
 
 
-def fetch_detailed_dataset_info(erddap_server, config, station_id, station_data):
+def fetch_detailed_dataset_info(erddap_server, station_id, station_data):
     # load specific station data into MCF skeleton
     print(f"Loading ERDDAP metadata for station: {station_id}")
-
-    # keywords_field = config['dynamic_data']['keywords_field']
 
     erddap_server.dataset_id = station_id
 
@@ -422,12 +408,37 @@ def fetch_detailed_dataset_info(erddap_server, config, station_id, station_data)
     # create subset of instrument metadata, use regex to split and identify
     # instrument id and then iterate through possible fields, mapping them
     # to corresponding YAML fields.
-    instruments = metadata[
-        metadata["Attribute Name"].str.contains("^instrument_", na=False, regex=True)
-    ]
-    if not instruments.empty:
-        # TODO: iterate through instruments
-        pass
+    instruments = metadata[metadata["Attribute Name"].str.contains("^instrument_", na=False, regex=True)].to_dict('records')
+
+    instrument_pattern = re.compile('instrument_(?P<id>\d+)_(?P<part>\w+)(_(?P<lang>\w+))?')
+    instrument_collection = {}
+
+    for instrument in instruments:
+        inst = copy.deepcopy(instrument_template)
+
+        matches = instrument_pattern.match(instrument['Attribute Name']).groupdict()
+        inst_id = int(matches['id'])
+        inst_part = matches['part']
+
+        if not matches['lang'] in matches:
+            inst_lang = 'en'
+
+        if inst_id in instrument_collection:
+            if inst_part in ['type', 'description']:
+                instrument_collection[inst_id][inst_part][inst_lang] = instrument['Value']
+            else:
+                instrument_collection[inst_id][inst_part] = instrument['Value']
+
+        else:
+            if inst_part in ['type', 'description']:
+                inst[inst_part][inst_lang] = instrument['Value']
+            else:
+                inst[inst_part] = instrument['Value']
+            
+            instrument_collection[inst_id] = inst
+        
+    for inst_key in instrument_collection:
+        platform_info["instruments"].append(instrument_collection[inst_key])
 
     station_data["platform"] = platform_info
 
@@ -466,9 +477,6 @@ def stripper(data):
     return new_data
 
 def output_yaml_source(dtp_config, filtered_data):
-    output = []
-
-    # TODO: use new config output settings and map to metadata-xml genereator
     for index_label, station_profile in enumerate(filtered_data["erddap"]):
         dtp_logger.info(f"Dumping YAML for {station_profile} profile")
 
@@ -485,15 +493,12 @@ def output_yaml_source(dtp_config, filtered_data):
 
         yaml_output = yaml.dump(data=station_data, sort_keys=False)
 
-        output.append(yaml_output)
         with open(yaml_file_name, "w", encoding="UTF-8") as file_writer:
             file_writer.write(yaml_output)
 
         xml_output = metadata_to_xml(station_data)
         with open(xml_file_name, "w", encoding="UTF-8") as file_writer:
             file_writer.write(xml_output)
-
-    return output
 
 
 if __name__ == "__main__":
