@@ -315,48 +315,77 @@ def fetch_detailed_dataset_info(erddap_server, station_id, station_data):
         },
     }
 
-    # automate the creation and population of these fields using these two lists
-    contact_roles = ["contributor", "creator", "publisher"]
+    # There are the role names that ERDDAP wants and what they should be 
+    # according to the CIOOS spec, for example:
+    #  - ERDDAP 'creator' vs. CIOOS/ISO 'originator'
+    role_mappings = {
+        "author":"author",
+        "contributor":"contributor",
+        "custodian":"custodian",
+        "coAuthor":"coAuthor",
+        "collaborator":"collaborator",
+        "distributor":"distributor",
+        "editor":"editor",
+        "funder":"funder",
+        "mediator":"mediator",
+        "originator":"originator",
+        "creator":"originator",     # This is a duplicate/override
+        "owner":"owner",
+        "pointOfContact":"pointOfContact",
+        "principalInvestigator":"principalInvestigator",
+        "processor":"processor",
+        "publisher":"publisher",
+        "resourceProvider":"resourceProvider",
+        "rightsHolder":"rightsHolder",
+        "sponsor":"sponsor",
+        "stakeholder":"stakeholder",
+        "user":"user"
+    }
 
     # added keys for more complete metadata generation:
     # - *_person_name,
     # - *_person_email,
     # - *_position,
     # - *_institution
-    for role in contact_roles:
-        contact = copy.deepcopy(contact_template)
-        contact["roles"].append(role)
+    for role_key, role in role_mappings.items():
 
-        type_key = erddap_meta(metadata, role + "_type")["value"]
+        # Check if the selected role is actually populated and if so, then
+        # fill out the associated metadata
+        if erddap_meta(metadata, role_key + "_name")["value"]:
+            contact = copy.deepcopy(contact_template)
 
-        # if the type is not specified, it is assumed to be a person
-        if not type_key:
-            type_key = "person"
+            contact["roles"].append(role)
 
-        # Common contact information regardless of role
-        contact["organization"]["url"] = erddap_meta(metadata, role + "_url")["value"]
-        contact["organization"]["address"] = erddap_meta(metadata, role + "_address")["value"]
-        contact["organization"]["city"] = erddap_meta(metadata, role + "_city")["value"]
-        contact["organization"]["country"] = erddap_meta(metadata, role + "_country")["value"]
-        contact["organization"]["phone"] = erddap_meta(metadata, role + "_phone")["value"]
+            type_key = erddap_meta(metadata, role_key + "_type")["value"]
 
-        contact["individual"]["position"] = erddap_meta(metadata, role + "_position")["value"]
+            # if the type is not specified, it is assumed to be a person
+            if not type_key:
+                type_key = "person"
 
-        # contact information that shifts due to role and may require additional fields
-        if any(role in type_key for role in ["person", "position"]):
-            contact["individual"]["name"] = erddap_meta(metadata, role + "_name")["value"]
-            contact["individual"]["email"] = erddap_meta(metadata, role + "_email")["value"]
+            # Common contact information regardless of role
+            contact["organization"]["url"] = erddap_meta(metadata, role_key + "_url")["value"]
+            contact["organization"]["address"] = erddap_meta(metadata, role_key + "_address")["value"]
+            contact["organization"]["city"] = erddap_meta(metadata, role_key + "_city")["value"]
+            contact["organization"]["country"] = erddap_meta(metadata, role_key + "_country")["value"]
+            contact["organization"]["phone"] = erddap_meta(metadata, role_key + "_phone")["value"]
 
-            contact["organization"]["name"] = erddap_meta(metadata, role + "_institution")["value"]
-        
-        elif any(role in type_key for role in ["institution", "group"]):
-            contact["organization"]["name"] = erddap_meta(metadata, role + "_name")["value"]
-            contact["organization"]["email"] = erddap_meta(metadata, role + "_email")["value"]
+            contact["individual"]["position"] = erddap_meta(metadata, role + "_position")["value"]
+
+            # contact information that shifts due to role and may require additional fields
+            if any(role in type_key for role in ["person", "position"]):
+                contact["individual"]["name"] = erddap_meta(metadata, role_key + "_name")["value"]
+                contact["individual"]["email"] = erddap_meta(metadata, role_key + "_email")["value"]
+
+                contact["organization"]["name"] = erddap_meta(metadata, role_key + "_institution")["value"]
             
-            contact["individual"]["name"] = erddap_meta(metadata, role + "_person_name")["value"]
-            contact["individual"]["email"] = erddap_meta(metadata, role + "_person_email")["value"]
-            
-        station_data["contact"].append(contact)
+            elif any(role in type_key for role in ["institution", "group"]):
+                contact["organization"]["name"] = erddap_meta(metadata, role_key + "_name")["value"]
+                contact["organization"]["email"] = erddap_meta(metadata, role_key + "_email")["value"]
+                
+                contact["individual"]["name"] = erddap_meta(metadata, role_key + "_person_name")["value"]
+                contact["individual"]["email"] = erddap_meta(metadata, role_key + "_person_email")["value"]
+                
+            station_data["contact"].append(contact)
 
     # platform & instruments
     # platform_id *
